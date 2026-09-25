@@ -1,0 +1,46 @@
+{
+  "Monitor": {
+    "screen_orientation": 0,
+    "follow_led_color": 0
+  },
+  "LED": {
+    "mode": 2,
+    "red_value": 0,
+    "green_value": 6,
+    "blue_value": 6,
+    "task_name": "task_led.py",
+    "is_run_on_startup": true
+  },
+  "Fan": {
+    "mode": 0,
+    "task_name": "task_fan.py",
+    "is_run_on_startup": true
+  },
+  "OLED": {
+    "task_name": "task_victron_oled.py",
+    "is_run_on_startup": true,
+    "screen1": {
+      "data_format": 0,
+      "time_format": 0,
+      "display_time": 35.0,
+      "is_run_on_oled": true
+    },
+    "screen2": {
+      "interchange": 0,
+      "display_time": 35.0,
+      "is_run_on_oled": true
+    }
+  },
+  "Victron": {
+    "port": "/dev/ttyUSB0",
+    "baudrate": 19200,
+    "timeout": 1,
+    "low_voltage_threshold": 12.8,
+    "critical_voltage_threshold": 12.7,
+    "polling_interval": 0.5
+  },
+  "Service": {
+    "is_exist_on_rpi": false,
+    "is_run_on_startup": false
+  }
+}

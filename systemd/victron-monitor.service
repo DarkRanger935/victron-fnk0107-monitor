@@ -1,0 +1,20 @@
+[Unit]
+Description=Victron FNK0107 Power Monitor Service
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/victron-fnk0107-monitor
+ExecStart=/usr/bin/python3 /home/pi/victron-fnk0107-monitor/task_victron_oled.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Require super user privileges for shutdown command
+AmbientCapabilities=CAP_SYS_BOOT
+
+[Install]
+WantedBy=multi-user.target

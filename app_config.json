@@ -32,7 +32,7 @@
     }
   },
   "Victron": {
-    "port": "/dev/ttyUSB0",
+    "port": "/dev/serial/by-id/usb-VictronEnergy_BV_VE_Direct_cable_VEAWDPFF-if00-port0",
     "baudrate": 19200,
     "timeout": 1,
     "low_voltage_threshold": 12.8,

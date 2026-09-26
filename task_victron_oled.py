@@ -38,6 +38,8 @@ class VictronOLEDTask:
         self.last_alert_toggle = 0
         self.last_led_mode = None
         self.last_led_color = None
+        self.follow_led_color_primed = False
+        self.last_follow_led_color = None
         self.normal_led_mode = 2
         self.font_size = 12
         self.system_screens = ("date_time", "utilization", "fans", "temperatures")
@@ -182,17 +184,19 @@ class VictronOLEDTask:
         self.expansion.set_led_mode(1)
         self.expansion.set_all_led_color(*self.normal_led_color)
         self.expansion.set_led_mode(self.normal_led_mode)
+        self.follow_led_color_primed = True
+        self.last_follow_led_color = self.normal_led_color
         self.last_led_mode = self.normal_led_mode
         self.last_led_color = self.normal_led_color
     
     def restore_normal_led_state(self):
         """Restore follow mode without replaying the full-strip color flash."""
-        if self.last_led_mode != self.normal_led_mode or self.last_led_color != self.normal_led_color:
-            self.expansion.set_led_mode(1)
-            self.expansion.set_all_led_color(*self.normal_led_color)
-            self.expansion.set_led_mode(self.normal_led_mode)
-            self.last_led_mode = self.normal_led_mode
-        self.last_led_color = self.normal_led_color
+        if not self.follow_led_color_primed:
+            self.initialize_normal_led_state()
+            return
+        self._ensure_led_mode(self.normal_led_mode)
+        self.last_follow_led_color = self.normal_led_color
+        self.last_led_color = self.last_follow_led_color
     
     def _ensure_led_mode(self, mode):
         """Apply a LED mode only when it changes."""

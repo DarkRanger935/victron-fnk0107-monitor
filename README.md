@@ -74,7 +74,7 @@ python3 - <<'PY'
 from pathlib import Path
 import site
 
-repo_path = Path.home() / "victron-fnk0107-monitor"
+repo_path = Path.cwd()
 user_site = Path(site.getusersitepackages())
 user_site.mkdir(parents=True, exist_ok=True)
 (user_site / "victron_fnk0107_monitor.pth").write_text(f"{repo_path}\n", encoding="utf-8")

@@ -237,7 +237,7 @@ Messages parsed:
 ```
 
 ### Screen 5: Victron Battery
-Example below shows a discharging battery; charging uses `↑` for both the power header and current line, and `Rem` is the Victron-reported remaining time.
+Example below shows a discharging battery, so both the power header and current line use `↓`. Charging uses `↑` for both, and `Rem` is the Victron-reported remaining time.
 ```
 ┌────────────────────┐
 │      72W ↓         │

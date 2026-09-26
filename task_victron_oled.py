@@ -386,6 +386,7 @@ class VictronOLEDTask:
         
         screen_start_time = time.time()
         current_screen_index = 0
+        previous_alert_active = False
         
         while self.running:
             try:
@@ -429,9 +430,12 @@ class VictronOLEDTask:
                 
                 if alert_active:
                     # Display alert instead of normal screens
-                    screen_start_time = time.time()
+                    if not previous_alert_active:
+                        screen_start_time = time.time()
                     self.oled_ui_low_voltage_alert(voltage)
                 else:
+                    if previous_alert_active:
+                        screen_start_time = time.time()
                     if elapsed >= screen_duration:
                         current_screen_index = (current_screen_index + 1) % len(self.screen_sequence)
                         current_screen = self.screen_sequence[current_screen_index]
@@ -448,6 +452,8 @@ class VictronOLEDTask:
                         self.oled_ui_temperatures(cpu_temp, case_temp)
                     else:
                         self.oled_ui_victron_stats(power_text, voltage, current_str, soc, rem_str)
+                
+                previous_alert_active = alert_active
                 
                 time.sleep(0.3)
             

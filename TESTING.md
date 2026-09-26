@@ -42,8 +42,8 @@ sudo apt-get install -y $(grep -Ev '^(#|$)' requirements.txt | tr '\n' ' ')
 
 # Extra test tools used later in this guide:
 # - stress-ng: Phase 4 CPU load test
-# - cu: Victron serial troubleshooting command
-sudo apt-get install -y stress-ng cu
+# - uucp: provides `cu` for Victron serial troubleshooting
+sudo apt-get install -y stress-ng uucp
 
 # Make repository modules importable from any working directory
 # Run this from the repository root (after `cd victron-fnk0107-monitor`)

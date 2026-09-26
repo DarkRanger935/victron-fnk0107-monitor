@@ -184,7 +184,7 @@ class VictronOLEDTask:
         """Prime the board with the configured follow color, then hand off to follow mode."""
         force_priming = not self.follow_led_color_primed
         self._ensure_led_mode(self.static_led_mode)
-        if force_priming or self.last_led_color != self.normal_led_color:
+        if force_priming or self.last_follow_led_color != self.normal_led_color:
             self.expansion.set_all_led_color(*self.normal_led_color)
             self.last_led_color = self.normal_led_color
         self._ensure_led_mode(self.normal_led_mode)
@@ -221,8 +221,12 @@ class VictronOLEDTask:
             power_text = f"{watts:.1f}W"
         else:
             power_text = f"{watts:.0f}W"
-        current_text = self.victron.format_current(current)
-        arrow = current_text.split()[-1] if ' ' in current_text else '→'
+        if current > 0:
+            arrow = '↑'
+        elif current < 0:
+            arrow = '↓'
+        else:
+            arrow = '→'
         return f"{power_text} {arrow}"
     
     def get_screen_duration(self, screen_name):
@@ -236,6 +240,23 @@ class VictronOLEDTask:
         if isinstance(usage_data, (list, tuple)) and usage_data:
             return usage_data[0]
         return usage_data or 0
+    
+    def normalize_usage_values(self, memory_usage, disk_usage):
+        """Normalize memory and disk usage inputs to percentage scalars."""
+        return self.get_usage_percent(memory_usage), self.get_usage_percent(disk_usage)
+    
+    def render_screen(self, screen_name, snapshot):
+        """Render the active OLED screen from a prepared snapshot."""
+        if screen_name == "date_time":
+            self.oled_ui_date_time(snapshot["date_str"], snapshot["time_str"])
+        elif screen_name == "utilization":
+            self.oled_ui_system_stats(snapshot["cpu_usage"], snapshot["memory_percent"], snapshot["disk_percent"])
+        elif screen_name == "fans":
+            self.oled_ui_fan_speeds(snapshot["fan_speeds"])
+        elif screen_name == "temperatures":
+            self.oled_ui_temperatures(snapshot["cpu_temp"], snapshot["case_temp"])
+        else:
+            self.oled_ui_victron_stats(snapshot["power_text"], snapshot["voltage"], snapshot["current_str"], snapshot["soc"], snapshot["rem_str"])
     
     def oled_ui_date_time(self, date_str, time_str):
         """Display the date and time on a dedicated screen."""
@@ -418,11 +439,25 @@ class VictronOLEDTask:
                 case_temp = self.expansion.get_temp()
                 fan_duty = self.expansion.get_fan_duty()
                 fan_speeds = [d / 255.0 * 100 for d in (fan_duty if isinstance(fan_duty, list) else [fan_duty])]
-                memory_percent = self.get_usage_percent(memory_usage)
-                disk_percent = self.get_usage_percent(disk_usage)
+                memory_percent, disk_percent = self.normalize_usage_values(memory_usage, disk_usage)
                 current_str = self.victron.format_current(current)
                 rem_str = self.victron.format_ttg(ttg)
                 power_text = self.format_power_header(voltage, current)
+                screen_snapshot = {
+                    "date_str": date_str,
+                    "time_str": time_str,
+                    "cpu_usage": cpu_usage,
+                    "memory_percent": memory_percent,
+                    "disk_percent": disk_percent,
+                    "cpu_temp": cpu_temp,
+                    "case_temp": case_temp,
+                    "fan_speeds": fan_speeds,
+                    "power_text": power_text,
+                    "voltage": voltage,
+                    "current_str": current_str,
+                    "soc": soc,
+                    "rem_str": rem_str,
+                }
                 
                 # Check if screen needs to switch
                 elapsed = time.time() - screen_start_time
@@ -444,16 +479,7 @@ class VictronOLEDTask:
                         screen_duration = self.get_screen_duration(current_screen)
                         screen_start_time = time.time()
                     
-                    if current_screen == "date_time":
-                        self.oled_ui_date_time(date_str, time_str)
-                    elif current_screen == "utilization":
-                        self.oled_ui_system_stats(cpu_usage, memory_percent, disk_percent)
-                    elif current_screen == "fans":
-                        self.oled_ui_fan_speeds(fan_speeds)
-                    elif current_screen == "temperatures":
-                        self.oled_ui_temperatures(cpu_temp, case_temp)
-                    else:
-                        self.oled_ui_victron_stats(power_text, voltage, current_str, soc, rem_str)
+                    self.render_screen(current_screen, screen_snapshot)
                 
                 previous_alert_active = alert_active
                 

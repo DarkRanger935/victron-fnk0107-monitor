@@ -50,12 +50,14 @@ class ConfigManager:
             directory = os.path.dirname(self.config_file)
             if directory:
                 os.makedirs(directory, exist_ok=True)
-                
-            temp_file = self.config_file + '.tmp'
-            with open(temp_file, 'w', encoding='utf-8') as f:
-                fcntl.flock(f.fileno(), fcntl.LOCK_EX)  
+
+            with open(self.config_file, 'a+', encoding='utf-8') as f:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                f.seek(0)
+                f.truncate()
                 json.dump(self.config_data, f, indent=2, ensure_ascii=False)
-            os.rename(temp_file, self.config_file)
+                f.flush()
+                os.fsync(f.fileno())
         except Exception as e:
             print(f"Error saving configuration file: {e}")
     

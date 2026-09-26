@@ -30,8 +30,8 @@ class TaskManager:
         self.expansion = Expansion()
         led_config = self.config_manager.get_section('LED')
         fan_config = self.config_manager.get_section('Fan')
-        self.send_led_mode_to_expansion(led_config['mode'])
-        self.send_fan_mode_to_expansion(fan_config['mode'])
+        self.send_led_mode_to_expansion(led_config.get('mode', 0))
+        self.send_fan_mode_to_expansion(fan_config.get('mode', 0))
         
         atexit.register(self.handle_signal)
         signal.signal(signal.SIGTERM, self.handle_signal)
@@ -207,7 +207,7 @@ class TaskManager:
         task_path = os.path.join(self.script_dir, task["path"])
         if os.path.exists(task_path):
             print(f"Starting task: {task['path']}")
-            proc = subprocess.Popen([sys.executable, task["path"]], cwd=self.script_dir)
+            proc = subprocess.Popen([sys.executable, task_path], cwd=self.script_dir)
             return proc
         else:
             print(f"Warning: Task file {task['path']} not found")

@@ -137,21 +137,28 @@ python3 task_victron_oled.py
 ```
 
 **Expected Behavior:**
-- OLED Screen 1 (System Stats) - displays for ~35 seconds:
-  - Date and time at top
+- OLED rotates through five screens:
+  - Date / time only
   - CPU, Memory, Disk usage as pie charts
-  - Temperature readings
-  - Fan speeds
-  - Alternates with Screen 2
+  - Fan duty percentages as pie charts
+  - CPU and case temperatures
+  - Victron stats
 
-- OLED Screen 2 (Victron Stats) - displays for ~35 seconds:
+- OLED Victron screen:
+  - Power in watts on the first row with flow arrow (↑ charging / ↓ discharging)
   - Voltage (V)
-  - Current with direction (A ↓ charging / A ↑ discharging)
+  - Current with direction (A ↑ charging / A ↓ discharging)
   - State of Charge (%)
-  - Estimated runtime
+  - Remaining time reported by Victron
 
-- LED Behavior (Normal):
-  - Case ARGB LEDs set to cyan (0, 6, 6) in follow mode
+- OLED ARGB behavior:
+  - Case ARGB LEDs stay cyan (0, 6, 6) in follow mode without the extra full-strip flash over the scrolling effect
+
+- OLED Victron data details:
+  - Voltage (V)
+  - Current with direction (A ↑ charging / A ↓ discharging)
+  - State of Charge (%)
+  - Remaining time
 
 **Test the Low Voltage Alert:**
 
@@ -278,10 +285,14 @@ Please create a GitHub issue with the following:
 - [ ] System sensors reporting
 
 **Phase 2: Manual Task Execution**
-- [ ] Screen 1 (System Stats) displaying correctly
-- [ ] Screen 2 (Victron Stats) displaying correctly
-- [ ] Screens alternate properly every ~35 seconds
+- [ ] Date / time screen displays correctly
+- [ ] Utilization screen displays correctly
+- [ ] Fan screen displays correctly
+- [ ] Temperature screen displays correctly
+- [ ] Victron screen displays correctly
+- [ ] Screen rotation timing looks correct
 - [ ] LEDs cyan (0,6,6) in normal mode
+- [ ] LEDs no longer visibly flicker in normal mode
 - [ ] Low voltage alert triggered at correct threshold
 - [ ] Alert LED flash (red/blue) working
 - [ ] Alert message "Shutdown Imminent!" displays

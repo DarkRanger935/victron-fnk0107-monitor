@@ -27,7 +27,7 @@ class VictronMonitor:
             'voltage': 0.0,      # Volts
             'current': 0.0,      # Amps (positive = charging, negative = discharging)
             'soc': 0,            # State of Charge %
-            'ttg': 0,            # Time to go (seconds)
+            'ttg': 0,            # Time remaining from VE.Direct TTG (minutes)
             'direction': 'idle'  # 'charging' or 'discharging'
         }
         self.lock = threading.Lock()
@@ -85,7 +85,7 @@ class VictronMonitor:
                     # State of Charge in 0.1% units
                     self.data['soc'] = int(float(value) / 10.0)
                 elif key == 'TTG':
-                    # Time to go in seconds (-1 = N/A)
+                    # Time to go in minutes (-1 = N/A)
                     ttg = int(value)
                     self.data['ttg'] = ttg if ttg > 0 else 0
         except (ValueError, IndexError) as e:
@@ -173,7 +173,7 @@ class VictronMonitor:
     
     def get_ttg(self):
         """
-        Get Time To Go (estimated runtime in seconds)
+        Get Victron TTG value (remaining time in minutes)
         """
         with self.lock:
             return self.data['ttg']
@@ -185,26 +185,26 @@ class VictronMonitor:
         with self.lock:
             return self.data['direction']
     
-    def format_ttg(self, seconds):
+    def format_ttg(self, minutes):
         """
         Format time to go into readable string
         
         Args:
-            seconds (int): Time in seconds
+            minutes (int): Time in minutes
             
         Returns:
             str: Formatted time (e.g., "4h 32m", "45m", "N/A")
         """
-        if seconds <= 0:
+        if minutes <= 0:
             return "N/A"
         
-        hours = seconds // 3600
-        minutes = (seconds % 3600) // 60
+        hours = minutes // 60
+        remaining_minutes = minutes % 60
         
         if hours > 0:
-            return f"{hours}h {minutes}m"
+            return f"{hours}h {remaining_minutes}m"
         else:
-            return f"{minutes}m"
+            return f"{remaining_minutes}m"
     
     def format_current(self, amps):
         """
@@ -214,12 +214,12 @@ class VictronMonitor:
             amps (float): Current in Amps
             
         Returns:
-            str: Formatted current (e.g., "5.2A ↓", "-3.1A ↑")
+            str: Formatted current (e.g., "5.2A ↑", "3.1A ↓")
         """
         if amps > 0:
-            return f"{abs(amps):.1f}A ↓"  # Charging (down)
+            return f"{abs(amps):.1f}A ↑"  # Charging (up)
         elif amps < 0:
-            return f"{abs(amps):.1f}A ↑"  # Discharging (up)
+            return f"{abs(amps):.1f}A ↓"  # Discharging (down)
         else:
             return "0.0A"
 

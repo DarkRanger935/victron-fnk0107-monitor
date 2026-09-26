@@ -232,6 +232,7 @@ Messages parsed:
 ```
 
 ### Screen 5: Victron Battery
+Example below shows a discharging battery; charging uses `↑` for both the power header and current line.
 ```
 ┌────────────────────┐
 │      72W ↓         │

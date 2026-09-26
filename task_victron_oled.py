@@ -244,10 +244,14 @@ class VictronOLEDTask:
                 ("F1", fan_speeds[0], ((0, 16), (64, 60)), (32, 37)),
                 ("F2", fan_speeds[1], ((64, 16), (128, 60)), (96, 37)),
             ]
-        else:
+        elif fan_speeds:
             fan_layout = [
                 ("F1", fan_speeds[0], ((0, 16), (128, 60)), (64, 37)),
             ]
+        else:
+            self.oled.draw_text("No fan data", position=((0, 26), (128, 40)), directory="center", offset=(0, 0), font_size=12)
+            self.oled.show()
+            return
         
         for label, speed, text_box, center in fan_layout:
             x1, y1 = text_box[0]

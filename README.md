@@ -305,15 +305,17 @@ Edit `app_config.json`:
 ```
 
 ### Display Timing
+`system_screen_display_time` controls each date/utilization/fan/temperature screen. `screen2.display_time` controls the Victron screen, and `screen1.display_time` remains the legacy/default system-screen timing value.
+
 ```json
 {
   "OLED": {
-    "system_screen_display_time": 8.0,  # each date/utilization/fan/temperature screen
+    "system_screen_display_time": 8.0,
     "screen1": {
-      "display_time": 35.0             # legacy/default system-screen timing
+      "display_time": 35.0
     },
     "screen2": {
-      "display_time": 35.0             # Victron screen display time
+      "display_time": 35.0
     }
   }
 }

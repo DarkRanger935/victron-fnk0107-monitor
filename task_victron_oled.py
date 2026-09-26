@@ -165,6 +165,9 @@ class VictronOLEDTask:
             else:
                 self._set_led_state(1, (0, 0, 255))  # Blue
         else:
+            if self.alert_state:
+                self.last_led_mode = None
+                self.last_led_color = None
             self.alert_state = False
             # Normal cyan follow mode
             self._set_led_state(2, (0, 6, 6))  # Cyan follow mode

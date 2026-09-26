@@ -50,9 +50,13 @@ class VictronOLEDTask:
         self.low_voltage_threshold = self.config_manager.get_value('Victron', 'low_voltage_threshold') or 12.8
         self.critical_voltage_threshold = self.config_manager.get_value('Victron', 'critical_voltage_threshold') or 12.7
         
-        self.screen1_duration = self.config_manager.get_value('OLED', 'screen1', {}).get('display_time', 35.0) if self.config_manager.get_value('OLED', 'screen1') else 35.0
-        self.screen2_duration = self.config_manager.get_value('OLED', 'screen2', {}).get('display_time', 35.0) if self.config_manager.get_value('OLED', 'screen2') else 35.0
-        self.system_screen_duration = max(5.0, self.screen1_duration / max(1, len(self.system_screens)))
+        screen1_config = self.config_manager.get_value('OLED', 'screen1') or {}
+        screen2_config = self.config_manager.get_value('OLED', 'screen2') or {}
+        self.screen1_duration = screen1_config.get('display_time', 35.0)
+        self.screen2_duration = screen2_config.get('display_time', 35.0)
+        self.system_screen_duration = self.config_manager.get_value('OLED', 'system_screen_display_time')
+        if self.system_screen_duration is None:
+            self.system_screen_duration = self.screen1_duration
         
         try:
             self.expansion = Expansion()
@@ -144,15 +148,15 @@ class VictronOLEDTask:
         current_time = time.time()
         
         if alert_active:
+            entered_alert = False
             if not self.alert_state:
                 self.alert_state = True
                 self.alert_color_toggle = True
                 self.last_alert_toggle = current_time
-                self._set_led_state(1, (255, 0, 0))
-                return
+                entered_alert = True
             
             # Flash red/blue every 1 second
-            if current_time - self.last_alert_toggle >= 1.0:
+            if not entered_alert and current_time - self.last_alert_toggle >= 1.0:
                 self.alert_color_toggle = not self.alert_color_toggle
                 self.last_alert_toggle = current_time
             
@@ -197,6 +201,12 @@ class VictronOLEDTask:
         if screen_name == "victron":
             return self.screen2_duration
         return self.system_screen_duration
+    
+    def get_usage_percent(self, usage_data):
+        """Normalize usage values to a single numeric percentage."""
+        if isinstance(usage_data, (list, tuple)) and usage_data:
+            return usage_data[0]
+        return usage_data or 0
     
     def oled_ui_date_time(self, date_str, time_str):
         """Display the date and time on a dedicated screen."""
@@ -403,8 +413,8 @@ class VictronOLEDTask:
                 case_temp = self.expansion.get_temp()
                 fan_duty = self.expansion.get_fan_duty()
                 fan_speeds = [d / 255.0 * 100 for d in (fan_duty if isinstance(fan_duty, list) else [fan_duty])]
-                memory_percent = memory_usage[0] if isinstance(memory_usage, list) else memory_usage
-                disk_percent = disk_usage[0] if isinstance(disk_usage, list) else disk_usage
+                memory_percent = self.get_usage_percent(memory_usage)
+                disk_percent = self.get_usage_percent(disk_usage)
                 current_str = self.victron.format_current(current)
                 rem_str = self.victron.format_ttg(ttg)
                 power_text = self.format_power_header(voltage, current, direction)

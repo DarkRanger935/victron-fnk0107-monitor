@@ -100,8 +100,13 @@ Edit `app_config.json`:
     "critical_voltage_threshold": 12.7
   },
   "OLED": {
-    "screen1_duration": 35,
-    "screen2_duration": 35
+    "system_screen_display_time": 8.0,
+    "screen1": {
+      "display_time": 35.0
+    },
+    "screen2": {
+      "display_time": 35.0
+    }
   }
 }
 ```
@@ -232,7 +237,7 @@ Messages parsed:
 ```
 
 ### Screen 5: Victron Battery
-Example below shows a discharging battery; charging uses `↑` for both the power header and current line.
+Example below shows a discharging battery; charging uses `↑` for both the power header and current line, and `Rem` is the Victron-reported remaining time.
 ```
 ┌────────────────────┐
 │      72W ↓         │
@@ -303,8 +308,13 @@ Edit `app_config.json`:
 ```json
 {
   "OLED": {
-    "screen1_duration": 35,    # Pi stats display time
-    "screen2_duration": 35     # Victron stats display time
+    "system_screen_display_time": 8.0,  # each date/utilization/fan/temperature screen
+    "screen1": {
+      "display_time": 35.0             # legacy/default system-screen timing
+    },
+    "screen2": {
+      "display_time": 35.0             # Victron screen display time
+    }
   }
 }
 ```

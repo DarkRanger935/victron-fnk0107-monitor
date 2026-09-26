@@ -19,6 +19,7 @@
   "OLED": {
     "task_name": "task_victron_oled.py",
     "is_run_on_startup": true,
+    "system_screen_display_time": 8.0,
     "screen1": {
       "data_format": 0,
       "time_format": 0,

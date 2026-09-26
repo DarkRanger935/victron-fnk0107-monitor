@@ -6,21 +6,15 @@ A comprehensive power monitoring system for Raspberry Pi 5 that seamlessly integ
 
 ### Victron Monitoring
 - **Real-time power metrics**: Voltage, current (amps), charge/discharge direction
-- **Battery state**: State of Charge (SOC), estimated runtime remaining
+- **Battery state**: State of Charge (SOC), Victron-reported time remaining
 - **VE.Direct serial communication**: Reliable data acquisition from Victron 300A shunt monitor
 
-### System Display (35-second cycle each)
-- **Pi Hardware Stats Screen** (35 seconds)
-  - CPU, Memory, Disk usage as pie charts
-  - CPU and case temperature (°C)
-  - Fan speeds as percentage
-  - Date and time display
-
-- **Victron Stats Screen** (35 seconds)
-  - Voltage (V)
-  - Current (A) with direction (charging/discharging)
-  - State of Charge (%)
-  - Estimated runtime
+### System Display
+- **Date / Time Screen**
+- **Utilization Screen**: CPU, Memory, Disk pie charts
+- **Fan Screen**: Per-fan duty pie charts
+- **Temperature Screen**: CPU and case temperatures
+- **Victron Screen**: Power header, voltage, current, SOC, and time remaining
 
 ### Intelligent Alerts
 - **Low Voltage Alert** (≤12.8V)
@@ -33,7 +27,7 @@ A comprehensive power monitoring system for Raspberry Pi 5 that seamlessly integ
   - Prevents data corruption
 
 ### Normal Operation
-- **ARGB LED Mode**: Follow mode with cyan (0,6,6) color
+- **ARGB LED Mode**: Follow mode with cyan (0,6,6) color without constant resets
 - **Continuous Monitoring**: Real-time voltage polling
 - **Service Mode**: Runs as systemd service for auto-startup
 
@@ -197,30 +191,55 @@ Messages parsed:
 
 ## 🖥️ OLED Screen Layout
 
-### Screen 1: System Hardware (35 seconds)
+### Screen 1: Date / Time
 ```
 ┌────────────────────┐
-│    Date & Time     │
-│  12:34:56 Mon     │
-├────────────────────┤
-│ CPU MEM DISK      │
-│  ◯   ◯   ◯        │
-│ 20% 45% 75%       │
-├────────────────────┤
-│ CPU: 42°C Case:38°C│
-│ Fans: 65% 58% 72% │
+│    DATE / TIME     │
+│                    │
+│      12:34:56      │
+│                    │
+│    2026-09-26      │
 └────────────────────┘
 ```
 
-### Screen 2: Victron Battery (35 seconds)
+### Screen 2: Utilization
 ```
 ┌────────────────────┐
-│ BATTERY MONITOR    │
+│    UTILIZATION     │
+│ CPU  MEM  DSK      │
+│  ◯    ◯    ◯       │
+│ 20%  45%  75%      │
+└────────────────────┘
+```
+
+### Screen 3: Fan Speeds
+```
+┌────────────────────┐
+│    FAN SPEEDS      │
+│ F1   F2   F3       │
+│  ◯    ◯    ◯       │
+│ 65%  58%  72%      │
+└────────────────────┘
+```
+
+### Screen 4: Temperatures
+```
+┌────────────────────┐
+│   TEMPERATURES     │
+│ CPU   │  CASE      │
+│ 42C   │  38C       │
+└────────────────────┘
+```
+
+### Screen 5: Victron Battery
+```
+┌────────────────────┐
+│      72W ↓         │
 ├────────────────────┤
-│ Voltage: 13.2V    │
-│ Current: 5.2A⚡   │
-│ SOC: 87%          │
-│ Runtime: 4h 32m   │
+│ Voltage: 13.2V     │
+│ Current: 5.2A ↓    │
+│ SOC: 87%           │
+│ Rem: 4h 32m        │
 └────────────────────┘
 ```
 

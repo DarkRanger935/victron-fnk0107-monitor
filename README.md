@@ -81,10 +81,11 @@ user_site.mkdir(parents=True, exist_ok=True)
 (user_site / "victron_fnk0107_monitor.pth").write_text(f"{repo_path}\n", encoding="utf-8")
 print(f"Created {user_site / 'victron_fnk0107_monitor.pth'} -> {repo_path}")
 PY
+```
 
-# Note: this creates a persistent user-site import path entry.
-# This applies to the system-Python flow documented in this README.
-# If you move/delete the repo, remove it with:
+**Note:** This creates a persistent user-site import path entry for the system-Python flow documented in this README.
+If you later move/delete the repo, remove it with:
+```bash
 rm -f "$(python3 -m site --user-site)/victron_fnk0107_monitor.pth"
 ```
 

@@ -57,7 +57,10 @@ class ConfigManager:
                 fcntl.flock(f.fileno(), fcntl.LOCK_EX)
                 f.seek(0)
                 content = f.read().strip()
-                disk_config = json.loads(content) if content else {}
+                try:
+                    disk_config = json.loads(content) if content else {}
+                except json.JSONDecodeError:
+                    disk_config = {}
 
                 if self._replace_all:
                     merged_config = self.config_data
@@ -144,6 +147,7 @@ class ConfigManager:
             config_data (dict): All configuration data
         """
         self.config_data = config_data
+        self._dirty_sections.clear()
         self._replace_all = True
  
     def delete_config_file(self):
@@ -307,6 +311,7 @@ class ConfigManager:
                     config["Fan"]["mode3_max_speed_mapping"] = fan_map_default[1]
                 
                 self.config_data = config
+                self._dirty_sections.clear()
                 self._replace_all = True
                 self.save_config()
             else:

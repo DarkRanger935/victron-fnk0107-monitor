@@ -30,6 +30,8 @@ class TaskManager:
         self.expansion = Expansion()
         led_config = self.config_manager.get_section('LED')
         fan_config = self.config_manager.get_section('Fan')
+        led_config = led_config if isinstance(led_config, dict) else {}
+        fan_config = fan_config if isinstance(fan_config, dict) else {}
         if not led_config.get('is_run_on_startup', True):
             self.send_led_mode_to_expansion(led_config.get('mode', 0))
         if not fan_config.get('is_run_on_startup', True):
@@ -328,8 +330,21 @@ class TaskManager:
         for task_path in list(self.running_processes.keys()):
             self.stop_task(task_path)
 
-        self.expansion.set_led_mode(0)
-        self.expansion.set_fan_mode(0)
+        self.config_manager.load_config()
+        led_config = self.config_manager.get_section('LED')
+        fan_config = self.config_manager.get_section('Fan')
+        led_config = led_config if isinstance(led_config, dict) else {}
+        fan_config = fan_config if isinstance(fan_config, dict) else {}
+
+        if not led_config.get('is_run_on_startup', True):
+            self.send_led_mode_to_expansion(led_config.get('mode', 0))
+        else:
+            self.expansion.set_led_mode(0)
+
+        if not fan_config.get('is_run_on_startup', True):
+            self.send_fan_mode_to_expansion(fan_config.get('mode', 0))
+        else:
+            self.expansion.set_fan_mode(0)
         print("Task monitoring stopped")
 
 

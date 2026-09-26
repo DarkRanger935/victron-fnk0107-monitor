@@ -5,6 +5,7 @@ import time
 import os
 import shutil
 import math
+import tempfile
 
 class OLED:
     def __init__(self, bus_number=1, i2c_address=0x3C, rotate_angle=0):
@@ -230,9 +231,7 @@ class OLED:
             resize: Resize GIF (width, height)
             center: Whether to center display
         """
-        temp_folder = "temp"
-        if not os.path.exists(temp_folder):
-            os.makedirs(temp_folder)
+        temp_folder = tempfile.mkdtemp(prefix="oled-gif-")
         try:
             gif = Image.open(gif_path)
             frames = []

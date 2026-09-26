@@ -67,7 +67,7 @@ cd victron-fnk0107-monitor
 ### 2. Install System Dependencies (Bookworm)
 ```bash
 sudo apt-get update
-sudo apt-get install -y $(tr '\n' ' ' < requirements.txt)
+sudo apt-get install -y $(grep -Ev '^(#|$)' requirements.txt | tr '\n' ' ')
 ```
 
 **Why system packages?**

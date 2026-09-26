@@ -27,6 +27,7 @@ class ConfigManager:
         """
         Load configuration data from JSON file with file locking
         """
+        create_default_config = False
         try:
             if os.path.exists(self.config_file):
                 with open(self.config_file, 'r', encoding='utf-8') as f:
@@ -37,17 +38,20 @@ class ConfigManager:
                             self.config_data = json.loads(content)
                         else:  
                             print(f"Config file {self.config_file} is empty, creating default config")
-                            self.create_config_file()
+                            create_default_config = True
                     finally:
                         fcntl.flock(f.fileno(), fcntl.LOCK_UN) 
             else:
-                self.create_config_file()
+                create_default_config = True
         except json.JSONDecodeError as e:
             print(f"JSON decode error in {self.config_file}: {e}")
             print("Creating default configuration...")
-            self.create_config_file()
+            create_default_config = True
         except Exception as e:
             print(f"Error loading configuration file: {e}")
+            create_default_config = True
+
+        if create_default_config:
             self.create_config_file()
     
     def save_config(self):

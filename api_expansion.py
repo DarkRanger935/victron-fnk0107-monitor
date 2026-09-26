@@ -26,13 +26,10 @@ class I2CController:
 
 
     def write(self, reg, values):
-        try:
-            if isinstance(values, list):
-                self.bus.write_i2c_block_data(self.address, reg, values)
-            else:
-                self.bus.write_byte_data(self.address, reg, values)
-        except IOError as e:
-            pass
+        if isinstance(values, list):
+            self.bus.write_i2c_block_data(self.address, reg, values)
+        else:
+            self.bus.write_byte_data(self.address, reg, values)
     
     def read(self, reg, length=1):
         try:

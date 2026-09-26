@@ -89,8 +89,11 @@ class TaskManager:
     def _start_managed_task(self, task):
         task_path = task["path"]
         with self.state_lock:
-            if task_path in self.running_processes:
+            existing_proc = self.running_processes.get(task_path)
+            if existing_proc is not None and existing_proc.poll() is None:
                 return
+            if task_path in self.running_processes:
+                self.running_processes.pop(task_path, None)
             self.running_processes[task_path] = None
 
         proc = self.start_task(task)

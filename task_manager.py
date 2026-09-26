@@ -23,6 +23,7 @@ class TaskManager:
         """
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.config_path = os.path.join(self.script_dir, config_file)
+        self.python_executable = "/usr/bin/python3"
         self.state_lock = threading.RLock()
         self.config_manager = ConfigManager(self.config_path)
         self.running_processes = {}  # Store running processes
@@ -215,7 +216,7 @@ class TaskManager:
         task_path = os.path.join(self.script_dir, task["path"])
         if os.path.exists(task_path):
             print(f"Starting task: {task['path']}")
-            proc = subprocess.Popen([sys.executable, task_path], cwd=self.script_dir)
+            proc = subprocess.Popen([self.python_executable, task_path], cwd=self.script_dir)
             return proc
         else:
             print(f"Warning: Task file {task['path']} not found")
@@ -258,11 +259,9 @@ class TaskManager:
         for task in enabled_tasks:
             task_path = task["path"]
             with self.state_lock:
-                should_start = task_path not in self.running_processes
-            if should_start:
-                proc = self.start_task(task)
-                if proc:
-                    with self.state_lock:
+                if task_path not in self.running_processes:
+                    proc = self.start_task(task)
+                    if proc:
                         self.running_processes[task_path] = proc
 
     def _monitor_tasks(self):
@@ -299,11 +298,9 @@ class TaskManager:
                 for task in enabled_tasks:
                     task_path = task["path"]
                     with self.state_lock:
-                        should_start = task_path not in self.running_processes
-                    if should_start:
-                        proc = self.start_task(task)
-                        if proc:
-                            with self.state_lock:
+                        if task_path not in self.running_processes:
+                            proc = self.start_task(task)
+                            if proc:
                                 self.running_processes[task_path] = proc
                 
                 # Stop disabled tasks

@@ -38,7 +38,7 @@ cd victron-fnk0107-monitor
 
 # Install system dependencies
 sudo apt-get update
-xargs -a requirements.txt sudo apt-get install -y
+sudo apt-get install -y $(tr '\n' ' ' < requirements.txt)
 ```
 
 ## Testing Phases

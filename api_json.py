@@ -16,6 +16,8 @@ class ConfigManager:
         self.expansion = Expansion()
         self.config_file = config_file
         self.config_data = {}
+        self._dirty_sections = set()
+        self._replace_all = False
         self.load_config()
 
     def load_config(self):
@@ -54,10 +56,24 @@ class ConfigManager:
             with open(self.config_file, 'a+', encoding='utf-8') as f:
                 fcntl.flock(f.fileno(), fcntl.LOCK_EX)
                 f.seek(0)
+                content = f.read().strip()
+                disk_config = json.loads(content) if content else {}
+
+                if self._replace_all:
+                    merged_config = self.config_data
+                else:
+                    merged_config = disk_config if isinstance(disk_config, dict) else {}
+                    for section in self._dirty_sections:
+                        merged_config[section] = self.config_data.get(section, {})
+
+                f.seek(0)
                 f.truncate()
-                json.dump(self.config_data, f, indent=2, ensure_ascii=False)
+                json.dump(merged_config, f, indent=2, ensure_ascii=False)
                 f.flush()
                 os.fsync(f.fileno())
+                self.config_data = merged_config
+                self._dirty_sections.clear()
+                self._replace_all = False
         except Exception as e:
             print(f"Error saving configuration file: {e}")
     
@@ -86,6 +102,7 @@ class ConfigManager:
         if section not in self.config_data:
             self.config_data[section] = {}
         self.config_data[section][key] = value
+        self._dirty_sections.add(section)
     
     def get_section(self, section):
         """
@@ -97,7 +114,6 @@ class ConfigManager:
         Returns:
             dict: Configuration section data
         """
-        self.load_config()
         return self.config_data.get(section, {})
     
     def set_section(self, section, data):
@@ -109,6 +125,7 @@ class ConfigManager:
             data (dict): Data to set
         """
         self.config_data[section] = data
+        self._dirty_sections.add(section)
     
     def get_all_config(self):
         """
@@ -127,6 +144,7 @@ class ConfigManager:
             config_data (dict): All configuration data
         """
         self.config_data = config_data
+        self._replace_all = True
  
     def delete_config_file(self):
         """ Delete configuration file """
@@ -289,6 +307,7 @@ class ConfigManager:
                     config["Fan"]["mode3_max_speed_mapping"] = fan_map_default[1]
                 
                 self.config_data = config
+                self._replace_all = True
                 self.save_config()
             else:
                 print(f"Configuration file already exists: {self.config_file}")

@@ -30,8 +30,10 @@ class TaskManager:
         self.expansion = Expansion()
         led_config = self.config_manager.get_section('LED')
         fan_config = self.config_manager.get_section('Fan')
-        self.send_led_mode_to_expansion(led_config.get('mode', 0))
-        self.send_fan_mode_to_expansion(fan_config.get('mode', 0))
+        if not led_config.get('is_run_on_startup', True):
+            self.send_led_mode_to_expansion(led_config.get('mode', 0))
+        if not fan_config.get('is_run_on_startup', True):
+            self.send_fan_mode_to_expansion(fan_config.get('mode', 0))
         
         atexit.register(self.handle_signal)
         signal.signal(signal.SIGTERM, self.handle_signal)
@@ -84,6 +86,7 @@ class TaskManager:
         """
         # Get all tasks from config file
         tasks = []
+        self.config_manager.load_config()
         
         # Get task configs for each module
         led_config = self.config_manager.get_section('LED')
@@ -123,6 +126,7 @@ class TaskManager:
         """
         # Get all tasks from config file
         tasks = []
+        self.config_manager.load_config()
         
         # Get task configs for each module
         led_config = self.config_manager.get_section('LED')
@@ -158,6 +162,7 @@ class TaskManager:
         Print all tasks with their status
         """
         tasks = []
+        self.config_manager.load_config()
         
         # Get task configs for each module
         led_config = self.config_manager.get_section('LED')
@@ -341,6 +346,7 @@ class TaskManager:
         """
         # Find and update the corresponding task status
         config_updated = False
+        self.config_manager.load_config()
         
         # Check LED config
         led_config = self.config_manager.get_section('LED')

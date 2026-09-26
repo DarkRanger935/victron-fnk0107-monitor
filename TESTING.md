@@ -42,6 +42,7 @@ sudo apt-get install -y $(grep -Ev '^(#|$)' requirements.txt | tr '\n' ' ')
 sudo apt-get install -y stress-ng cu
 
 # Make repository modules importable from any working directory
+# Run this from the repository root (after `cd victron-fnk0107-monitor`)
 python3 - <<'PY'
 from pathlib import Path
 import site

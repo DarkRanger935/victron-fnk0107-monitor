@@ -4,10 +4,16 @@ import subprocess
 import sys
 import threading
 import time
+import api_expansion
+import api_oled
+import api_systemInfo
+import api_victron
 from api_json import ConfigManager
 from api_expansion import Expansion
 import atexit
 import signal
+
+API_MODULE_REFERENCES = (api_expansion, api_oled, api_systemInfo, api_victron)
 
 class TaskManager:
     """

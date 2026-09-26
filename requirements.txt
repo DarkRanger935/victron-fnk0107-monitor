@@ -1,4 +1,4 @@
-pyserial>=3.5
-pillow>=9.0.0
-psutil>=5.9.0
-smbus-cffi>=0.5.1
+python3-serial
+python3-pil
+python3-psutil
+python3-smbus

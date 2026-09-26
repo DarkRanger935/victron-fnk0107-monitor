@@ -38,6 +38,7 @@ class VictronOLEDTask:
         self.last_alert_toggle = 0
         self.last_led_mode = None
         self.last_led_color = None
+        self.normal_led_mode = 2
         self.font_size = 12
         self.system_screens = ("date_time", "utilization", "fans", "temperatures")
         self.screen_sequence = self.system_screens + ("victron",)
@@ -49,6 +50,11 @@ class VictronOLEDTask:
         self.victron_port = self.config_manager.get_value('Victron', 'port') or '/dev/ttyUSB0'
         self.low_voltage_threshold = self.config_manager.get_value('Victron', 'low_voltage_threshold') or 12.8
         self.critical_voltage_threshold = self.config_manager.get_value('Victron', 'critical_voltage_threshold') or 12.7
+        self.normal_led_color = (
+            self.config_manager.get_value('LED', 'red_value') or 0,
+            self.config_manager.get_value('LED', 'green_value') or 6,
+            self.config_manager.get_value('LED', 'blue_value') or 6,
+        )
         
         screen1_config = self.config_manager.get_value('OLED', 'screen1') or {}
         screen2_config = self.config_manager.get_value('OLED', 'screen2') or {}
@@ -91,6 +97,8 @@ class VictronOLEDTask:
         except Exception as e:
             print(f"Error initializing Victron: {e}")
             sys.exit(1)
+        
+        self.initialize_normal_led_state()
         
         atexit.register(self.handle_signal)
         signal.signal(signal.SIGTERM, self.handle_signal)
@@ -166,17 +174,33 @@ class VictronOLEDTask:
                 self._set_led_state(1, (0, 0, 255))  # Blue
         else:
             if self.alert_state:
-                self.last_led_mode = None
-                self.last_led_color = None
-            self.alert_state = False
-            # Normal cyan follow mode
-            self._set_led_state(2, (0, 6, 6))  # Cyan follow mode
+                self.alert_state = False
+                self.restore_normal_led_state()
+            else:
+                self._ensure_led_mode(self.normal_led_mode)
     
-    def _set_led_state(self, mode, color):
-        """Update LED mode/color only when the requested state changes."""
+    def initialize_normal_led_state(self):
+        """Prime the board with the configured follow color, then hand off to follow mode."""
+        self.expansion.set_led_mode(1)
+        self.expansion.set_all_led_color(*self.normal_led_color)
+        self.expansion.set_led_mode(self.normal_led_mode)
+        self.last_led_mode = self.normal_led_mode
+        self.last_led_color = self.normal_led_color
+    
+    def restore_normal_led_state(self):
+        """Restore follow mode without replaying the full-strip color flash."""
+        self._ensure_led_mode(self.normal_led_mode)
+        self.last_led_color = self.normal_led_color
+    
+    def _ensure_led_mode(self, mode):
+        """Apply a LED mode only when it changes."""
         if self.last_led_mode != mode:
             self.expansion.set_led_mode(mode)
             self.last_led_mode = mode
+    
+    def _set_led_state(self, mode, color):
+        """Update LED mode/color only when the requested state changes."""
+        self._ensure_led_mode(mode)
         
         if self.last_led_color != color:
             self.expansion.set_all_led_color(*color)
@@ -208,10 +232,8 @@ class VictronOLEDTask:
     def oled_ui_date_time(self, date_str, time_str):
         """Display the date and time on a dedicated screen."""
         self.oled.clear()
-        self.oled.draw_rectangle((0, 0, self.oled.width-1, self.oled.height-1), outline="white")
-        self.oled.draw_text("DATE / TIME", position=((0, 4), (128, 16)), directory="center", offset=(0, 0), font_size=11)
-        self.oled.draw_text(time_str, position=((0, 20), (128, 40)), directory="center", offset=(0, 0), font_size=18)
-        self.oled.draw_text(date_str, position=((0, 46), (128, 58)), directory="center", offset=(0, 0), font_size=12)
+        self.oled.draw_text(time_str, position=((0, 8), (128, 32)), directory="center", offset=(0, 0), font_size=22)
+        self.oled.draw_text(date_str, position=((0, 42), (128, 56)), directory="center", offset=(0, 0), font_size=13)
         self.oled.show()
     
     def oled_ui_system_stats(self, cpu_usage, memory_usage, disk_usage):
@@ -219,51 +241,42 @@ class VictronOLEDTask:
         Display system hardware utilization with pie charts
         """
         self.oled.clear()
+        self.oled.draw_text("CPU", position=((0, 4), (42, 14)), directory="center", offset=(0, 0), font_size=10)
+        self.oled.draw_text("MEM", position=((43, 4), (85, 14)), directory="center", offset=(0, 0), font_size=10)
+        self.oled.draw_text("DSK", position=((86, 4), (128, 14)), directory="center", offset=(0, 0), font_size=10)
         
-        # Draw border
-        self.oled.draw_rectangle((0, 0, self.oled.width-1, self.oled.height-1), outline="white")
-        self.oled.draw_text("UTILIZATION", position=((0, 4), (128, 16)), directory="center", offset=(0, 0), font_size=11)
+        self.oled.draw_circle_with_percentage((21, 30), 14, int(cpu_usage), outline="white", fill="white")
+        self.oled.draw_text(f"{int(cpu_usage)}%", position=((0, 48), (42, 60)), directory="center", offset=(0, 0), font_size=11)
         
-        # CPU, MEM, DISK pie charts
-        # CPU pie (left)
-        self.oled.draw_text("CPU", position=((0, 16), (42, 24)), directory="center", offset=(0, 0), font_size=10)
-        self.oled.draw_circle_with_percentage((21, 37), 12, int(cpu_usage), outline="white", fill="white")
-        self.oled.draw_text(f"{int(cpu_usage)}%", position=((0, 50), (42, 60)), directory="center", offset=(0, 0), font_size=10)
+        self.oled.draw_circle_with_percentage((64, 30), 14, int(memory_usage), outline="white", fill="white")
+        self.oled.draw_text(f"{int(memory_usage)}%", position=((43, 48), (85, 60)), directory="center", offset=(0, 0), font_size=11)
         
-        # MEM pie (center)
-        self.oled.draw_text("MEM", position=((43, 16), (85, 24)), directory="center", offset=(0, 0), font_size=10)
-        self.oled.draw_circle_with_percentage((64, 37), 12, int(memory_usage), outline="white", fill="white")
-        self.oled.draw_text(f"{int(memory_usage)}%", position=((43, 50), (85, 60)), directory="center", offset=(0, 0), font_size=10)
-        
-        # DISK pie (right)
-        self.oled.draw_text("DSK", position=((86, 16), (128, 24)), directory="center", offset=(0, 0), font_size=10)
-        self.oled.draw_circle_with_percentage((107, 37), 12, int(disk_usage), outline="white", fill="white")
-        self.oled.draw_text(f"{int(disk_usage)}%", position=((86, 50), (128, 60)), directory="center", offset=(0, 0), font_size=10)
+        self.oled.draw_circle_with_percentage((107, 30), 14, int(disk_usage), outline="white", fill="white")
+        self.oled.draw_text(f"{int(disk_usage)}%", position=((86, 48), (128, 60)), directory="center", offset=(0, 0), font_size=11)
         
         self.oled.show()
     
     def oled_ui_fan_speeds(self, fan_speeds):
         """Display fan speeds on their own screen."""
         self.oled.clear()
-        self.oled.draw_rectangle((0, 0, self.oled.width-1, self.oled.height-1), outline="white")
         extra_fans = max(0, len(fan_speeds) - 3)
-        title = f"FAN SPEEDS +{extra_fans}" if extra_fans else "FAN SPEEDS"
-        self.oled.draw_text(title, position=((0, 4), (128, 16)), directory="center", offset=(0, 0), font_size=11)
+        if extra_fans:
+            self.oled.draw_text(f"+{extra_fans} more", position=((0, 0), (128, 10)), directory="right", offset=(-2, 0), font_size=9)
         
         if len(fan_speeds) >= 3:
             fan_layout = [
-                ("F1", fan_speeds[0], ((0, 16), (42, 60)), (21, 37)),
-                ("F2", fan_speeds[1], ((43, 16), (85, 60)), (64, 37)),
-                ("F3", fan_speeds[2], ((86, 16), (128, 60)), (107, 37)),
+                ("F1", fan_speeds[0], ((0, 4), (42, 60)), (21, 28)),
+                ("F2", fan_speeds[1], ((43, 4), (85, 60)), (64, 28)),
+                ("F3", fan_speeds[2], ((86, 4), (128, 60)), (107, 28)),
             ]
         elif len(fan_speeds) >= 2:
             fan_layout = [
-                ("F1", fan_speeds[0], ((0, 16), (64, 60)), (32, 37)),
-                ("F2", fan_speeds[1], ((64, 16), (128, 60)), (96, 37)),
+                ("F1", fan_speeds[0], ((0, 4), (64, 60)), (32, 28)),
+                ("F2", fan_speeds[1], ((64, 4), (128, 60)), (96, 28)),
             ]
         elif fan_speeds:
             fan_layout = [
-                ("F1", fan_speeds[0], ((0, 16), (128, 60)), (64, 37)),
+                ("F1", fan_speeds[0], ((0, 4), (128, 60)), (64, 28)),
             ]
         else:
             self.oled.draw_text("No fan data", position=((0, 26), (128, 40)), directory="center", offset=(0, 0), font_size=12)
@@ -274,21 +287,19 @@ class VictronOLEDTask:
             x1, y1 = text_box[0]
             x2, y2 = text_box[1]
             self.oled.draw_text(label, position=((x1, y1), (x2, y1 + 8)), directory="center", offset=(0, 0), font_size=10)
-            self.oled.draw_circle_with_percentage(center, 12, int(speed), outline="white", fill="white")
-            self.oled.draw_text(f"{int(speed)}%", position=((x1, y2 - 10), (x2, y2)), directory="center", offset=(0, 0), font_size=10)
+            self.oled.draw_circle_with_percentage(center, 14, int(speed), outline="white", fill="white")
+            self.oled.draw_text(f"{int(speed)}%", position=((x1, y2 - 12), (x2, y2)), directory="center", offset=(0, 0), font_size=11)
         
         self.oled.show()
     
     def oled_ui_temperatures(self, cpu_temp, case_temp):
         """Display temperature readings on their own screen."""
         self.oled.clear()
-        self.oled.draw_rectangle((0, 0, self.oled.width-1, self.oled.height-1), outline="white")
-        self.oled.draw_text("TEMPERATURES", position=((0, 4), (128, 16)), directory="center", offset=(0, 0), font_size=11)
-        self.oled.draw_text("CPU", position=((0, 20), (64, 30)), directory="center", offset=(0, 0), font_size=12)
-        self.oled.draw_text(f"{int(cpu_temp)}C", position=((0, 34), (64, 50)), directory="center", offset=(0, 0), font_size=17)
-        self.oled.draw_line(((64, 18), (64, 56)), fill="white")
-        self.oled.draw_text("CASE", position=((64, 20), (128, 30)), directory="center", offset=(0, 0), font_size=12)
-        self.oled.draw_text(f"{int(case_temp)}C", position=((64, 34), (128, 50)), directory="center", offset=(0, 0), font_size=17)
+        self.oled.draw_text("CPU", position=((0, 8), (64, 20)), directory="center", offset=(0, 0), font_size=13)
+        self.oled.draw_text(f"{int(cpu_temp)}C", position=((0, 28), (64, 48)), directory="center", offset=(0, 0), font_size=18)
+        self.oled.draw_line(((64, 8), (64, 56)), fill="white")
+        self.oled.draw_text("CASE", position=((64, 8), (128, 20)), directory="center", offset=(0, 0), font_size=13)
+        self.oled.draw_text(f"{int(case_temp)}C", position=((64, 28), (128, 48)), directory="center", offset=(0, 0), font_size=18)
         
         self.oled.show()
     
@@ -297,25 +308,12 @@ class VictronOLEDTask:
         Display Victron battery statistics
         """
         self.oled.clear()
-        
-        # Draw border and dividers
-        self.oled.draw_rectangle((0, 0, self.oled.width-1, self.oled.height-1), outline="white")
-        self.oled.draw_line(((0, 16), (self.oled.width-1, 16)), fill="white")
-        
-        # Header
-        self.oled.draw_text(power_text, position=((0, 0), (128, 16)), directory="center", offset=(0, 2), font_size=12)
-        
-        # Voltage
-        self.oled.draw_text(f"Voltage: {voltage:.1f}V", position=((0, 18), (128, 30)), directory="left", offset=(2, 0), font_size=11)
-        
-        # Current
-        self.oled.draw_text(f"Current: {current_str}", position=((0, 30), (128, 42)), directory="left", offset=(2, 0), font_size=11)
-        
-        # SOC
-        self.oled.draw_text(f"SOC: {soc}%", position=((0, 42), (128, 54)), directory="left", offset=(2, 0), font_size=11)
-        
-        # Remaining time
-        self.oled.draw_text(f"Rem: {rem_str}", position=((0, 54), (128, 64)), directory="left", offset=(2, 0), font_size=11)
+        line_font = 12
+        self.oled.draw_text(power_text, position=((0, 0), (128, 12)), directory="left", offset=(4, 0), font_size=line_font)
+        self.oled.draw_text(f"{voltage:.1f}V", position=((0, 13), (128, 25)), directory="left", offset=(4, 0), font_size=line_font)
+        self.oled.draw_text(current_str, position=((0, 26), (128, 38)), directory="left", offset=(4, 0), font_size=line_font)
+        self.oled.draw_text(f"SOC {soc}%", position=((0, 39), (128, 51)), directory="left", offset=(4, 0), font_size=line_font)
+        self.oled.draw_text(f"Rem {rem_str}", position=((0, 52), (128, 64)), directory="left", offset=(4, 0), font_size=line_font)
         
         self.oled.show()
     

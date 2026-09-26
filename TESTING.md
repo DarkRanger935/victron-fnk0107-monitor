@@ -152,7 +152,7 @@ python3 task_victron_oled.py
   - Remaining time reported by Victron
 
 - OLED ARGB behavior:
-  - Case ARGB LEDs stay cyan (0, 6, 6) in follow mode without visible resets/flicker
+  - Case ARGB LEDs stay cyan (0, 6, 6) in follow mode without the extra full-strip flash over the scrolling effect
 
 - OLED Victron data details:
   - Voltage (V)

@@ -198,55 +198,39 @@ Messages parsed:
 
 ### Screen 1: Date / Time
 ```
-┌────────────────────┐
-│    DATE / TIME     │
-│                    │
-│      12:34:56      │
-│                    │
-│    2026-09-26      │
-└────────────────────┘
+     12:34:56
+
+    2026-09-26
 ```
 
 ### Screen 2: Utilization
 ```
-┌────────────────────┐
-│    UTILIZATION     │
-│ CPU  MEM  DSK      │
-│  ◯    ◯    ◯       │
-│ 20%  45%  75%      │
-└────────────────────┘
+ CPU  MEM  DSK
+  ◯    ◯    ◯
+ 20%  45%  75%
 ```
 
 ### Screen 3: Fan Speeds
 ```
-┌────────────────────┐
-│    FAN SPEEDS      │
-│ F1   F2   F3       │
-│  ◯    ◯    ◯       │
-│ 65%  58%  72%      │
-└────────────────────┘
+ F1   F2   F3
+  ◯    ◯    ◯
+ 65%  58%  72%
 ```
 
 ### Screen 4: Temperatures
 ```
-┌────────────────────┐
-│   TEMPERATURES     │
-│ CPU   │  CASE      │
-│ 42C   │  38C       │
-└────────────────────┘
+ CPU   │  CASE
+ 42C   │  38C
 ```
 
 ### Screen 5: Victron Battery
 Example below shows a discharging battery, so both the power header and current line use `↓`. Charging uses `↑` for both, and `Rem` is the Victron-reported remaining time.
 ```
-┌────────────────────┐
-│      72W ↓         │
-├────────────────────┤
-│ Voltage: 13.2V     │
-│ Current: 5.2A ↓    │
-│ SOC: 87%           │
-│ Rem: 4h 32m        │
-└────────────────────┘
+ 72W ↓
+ 13.2V
+ 5.2A ↓
+ SOC 87%
+ Rem 4h 32m
 ```
 
 ### Alert Overlay: Low Voltage (when V ≤ 12.8V)

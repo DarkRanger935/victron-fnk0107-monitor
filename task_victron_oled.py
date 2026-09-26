@@ -436,6 +436,7 @@ class VictronOLEDTask:
                 else:
                     if previous_alert_active:
                         screen_start_time = time.time()
+                        elapsed = 0
                     if elapsed >= screen_duration:
                         current_screen_index = (current_screen_index + 1) % len(self.screen_sequence)
                         current_screen = self.screen_sequence[current_screen_index]

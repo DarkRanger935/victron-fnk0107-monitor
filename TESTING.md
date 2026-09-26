@@ -41,6 +41,23 @@ sudo apt-get update
 sudo apt-get install -y $(grep -Ev '^(#|$)' requirements.txt | tr '\n' ' ')
 ```
 
+## Shell/Path Setup (Required)
+
+Run all test commands from the repository root so Python can import local modules (`api_expansion`, `api_oled`, `api_victron`, `api_systemInfo`).
+
+```bash
+# Ensure you're in the project root
+cd ~/victron-fnk0107-monitor
+pwd
+# Expected: /home/pi/victron-fnk0107-monitor
+
+# Optional: make imports robust even if launched from another directory
+export PYTHONPATH="$HOME/victron-fnk0107-monitor:$PYTHONPATH"
+
+# Quick import preflight
+python3 -c "import api_expansion, api_oled, api_victron, api_systemInfo; print('✓ Local api_* imports OK')"
+```
+
 ## Testing Phases
 
 ### Phase 1: Component Verification (15 min)
@@ -48,6 +65,8 @@ sudo apt-get install -y $(grep -Ev '^(#|$)' requirements.txt | tr '\n' ' ')
 **Goal**: Confirm each hardware component is detected and responding.
 
 ```bash
+cd ~/victron-fnk0107-monitor
+
 # Test 1.1: Victron Connection
 python3 -c "
 from api_victron import VictronMonitor
@@ -111,6 +130,8 @@ print('✓ System information working')
 **Goal**: Run the main task manually and verify display updates and LED behavior.
 
 ```bash
+cd ~/victron-fnk0107-monitor
+
 # Start the main task
 python3 task_victron_oled.py
 ```
@@ -175,6 +196,8 @@ To simulate low voltage without disrupting your actual battery:
 **Goal**: Install as systemd service and verify auto-startup.
 
 ```bash
+cd ~/victron-fnk0107-monitor
+
 # Install service file
 sudo cp systemd/victron-monitor.service /etc/systemd/system/
 
@@ -208,6 +231,8 @@ sudo systemctl stop victron-monitor.service
 **Goal**: Verify stability under various conditions.
 
 ```bash
+cd ~/victron-fnk0107-monitor
+
 # Test 4.1: Long-running stability (30+ minutes)
 # Start service and monitor for errors
 sudo systemctl start victron-monitor.service

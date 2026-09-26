@@ -228,7 +228,7 @@ Example below shows a discharging battery, so both the power header and current 
 ```
  72W ↓
  13.2V
- 5.2A ↓
+ 3.3A ↓
  SOC 87%
  Rem 4h 32m
 ```

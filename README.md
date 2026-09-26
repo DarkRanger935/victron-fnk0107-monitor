@@ -67,7 +67,7 @@ cd victron-fnk0107-monitor
 ### 2. Install System Dependencies (Bookworm)
 ```bash
 sudo apt-get update
-sudo apt-get install -y python3-serial python3-pil python3-psutil python3-smbus i2c-tools
+sudo xargs -a requirements.txt apt-get install -y
 ```
 
 **Why system packages?**
@@ -153,6 +153,7 @@ victron-fnk0107-monitor/
 ├── api_oled.py                   # OLED display (from Freenove)
 ├── task_victron_oled.py          # Main integrated task
 ├── task_led.py                   # LED control daemon
+├── task_fan.py                   # Fan control daemon
 ├── task_manager.py               # Task orchestration
 ├── systemd/
 │   └── victron-monitor.service   # Systemd service file

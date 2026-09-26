@@ -36,12 +36,9 @@ cd ~
 git clone https://github.com/DarkRanger935/victron-fnk0107-monitor.git
 cd victron-fnk0107-monitor
 
-# Install Python dependencies
-pip install -r requirements.txt
-sudo apt-get install python3-smbus i2c-tools
-
-# If using Python 3.9 or earlier, install smbus-cffi alternative
-# pip install smbus-i2c
+# Install system dependencies
+sudo apt-get update
+sudo xargs -a requirements.txt apt-get install -y
 ```
 
 ## Testing Phases

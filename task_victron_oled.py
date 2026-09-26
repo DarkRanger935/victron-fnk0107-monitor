@@ -144,8 +144,15 @@ class VictronOLEDTask:
         current_time = time.time()
         
         if alert_active:
+            if not self.alert_state:
+                self.alert_state = True
+                self.alert_color_toggle = True
+                self.last_alert_toggle = current_time
+            
             # Flash red/blue every 1 second
-            if self.last_led_mode != 1 or current_time - self.last_alert_toggle >= 1.0:
+            if self.last_led_mode != 1:
+                self._set_led_state(1, (255, 0, 0))
+            elif current_time - self.last_alert_toggle >= 1.0:
                 self.alert_color_toggle = not self.alert_color_toggle
                 self.last_alert_toggle = current_time
             
@@ -154,6 +161,7 @@ class VictronOLEDTask:
             else:
                 self._set_led_state(1, (0, 0, 255))  # Blue
         else:
+            self.alert_state = False
             # Normal cyan follow mode
             self._set_led_state(2, (0, 6, 6))  # Cyan follow mode
     

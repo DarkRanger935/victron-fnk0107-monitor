@@ -42,13 +42,7 @@ sudo apt-get install -y $(grep -Ev '^(#|$)' requirements.txt | tr '\n' ' ')
 
 # Extra test tools used later in this guide:
 # - stress-ng: Phase 4 CPU load test
-# - cu (or taylor-uucp): provides `cu` for Victron serial troubleshooting
 sudo apt-get install -y stress-ng
-if apt-cache show cu >/dev/null 2>&1; then
-  sudo apt-get install -y cu
-else
-  sudo apt-get install -y taylor-uucp
-fi
 
 # Make repository modules importable from any working directory
 # Run this from the repository root (after `cd victron-fnk0107-monitor`)
@@ -325,6 +319,7 @@ ls -la /dev/ttyUSB*
 sudo usermod -a -G dialout pi
 
 # Test serial connection directly
+sudo apt-get install -y cu || sudo apt-get install -y taylor-uucp
 cu -l /dev/ttyUSB0 -s 19200
 # Type Ctrl+D to exit
 ```

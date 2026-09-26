@@ -83,6 +83,7 @@ print(f"Created {user_site / 'victron_fnk0107_monitor.pth'} -> {repo_path}")
 PY
 
 # Note: this creates a persistent user-site import path entry.
+# This applies to the system-Python flow documented in this README.
 # If you move/delete the repo, remove it with:
 rm -f "$(python3 -m site --user-site)/victron_fnk0107_monitor.pth"
 ```

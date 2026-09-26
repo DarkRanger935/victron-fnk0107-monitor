@@ -87,7 +87,7 @@ class ConfigManager:
         except Exception as e:
             print(f"Error saving configuration file: {e}")
     
-    def get_value(self, section, key):
+    def get_value(self, section, key, default=None):
         """
         Get configuration value
         
@@ -98,7 +98,7 @@ class ConfigManager:
         Returns:
             Configuration item value
         """
-        return self.config_data.get(section, {}).get(key, None)
+        return self.config_data.get(section, {}).get(key, default)
     
     def set_value(self, section, key, value):
         """

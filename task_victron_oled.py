@@ -182,22 +182,16 @@ class VictronOLEDTask:
             self.expansion.set_all_led_color(*color)
             self.last_led_color = color
     
-    def get_direction_arrow(self, direction):
-        """Return arrow matching the current power-flow direction."""
-        if direction == 'charging':
-            return '↑'
-        if direction == 'discharging':
-            return '↓'
-        return '→'
-    
-    def format_power_header(self, voltage, current, direction):
+    def format_power_header(self, voltage, current):
         """Format power and flow direction for the Victron header."""
         watts = abs(voltage * current)
         if watts < 10:
             power_text = f"{watts:.1f}W"
         else:
             power_text = f"{watts:.0f}W"
-        return f"{power_text} {self.get_direction_arrow(direction)}"
+        current_text = self.victron.format_current(current)
+        arrow = current_text.split()[-1] if ' ' in current_text else '→'
+        return f"{power_text} {arrow}"
     
     def get_screen_duration(self, screen_name):
         """Return the configured duration for a given screen."""
@@ -252,7 +246,9 @@ class VictronOLEDTask:
         """Display fan speeds on their own screen."""
         self.oled.clear()
         self.oled.draw_rectangle((0, 0, self.oled.width-1, self.oled.height-1), outline="white")
-        self.oled.draw_text("FAN SPEEDS", position=((0, 4), (128, 16)), directory="center", offset=(0, 0), font_size=11)
+        extra_fans = max(0, len(fan_speeds) - 3)
+        title = f"FAN SPEEDS +{extra_fans}" if extra_fans else "FAN SPEEDS"
+        self.oled.draw_text(title, position=((0, 4), (128, 16)), directory="center", offset=(0, 0), font_size=11)
         
         if len(fan_speeds) >= 3:
             fan_layout = [
@@ -395,7 +391,6 @@ class VictronOLEDTask:
                 current = self.victron.get_current()
                 soc = self.victron.get_soc()
                 ttg = self.victron.get_ttg()
-                direction = self.victron.get_direction()
                 
                 # Check voltage
                 alert_active, should_shutdown = self.check_voltage_alert(voltage)
@@ -421,7 +416,7 @@ class VictronOLEDTask:
                 disk_percent = self.get_usage_percent(disk_usage)
                 current_str = self.victron.format_current(current)
                 rem_str = self.victron.format_ttg(ttg)
-                power_text = self.format_power_header(voltage, current, direction)
+                power_text = self.format_power_header(voltage, current)
                 
                 # Check if screen needs to switch
                 elapsed = time.time() - screen_start_time

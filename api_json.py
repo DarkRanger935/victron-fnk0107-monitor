@@ -44,7 +44,6 @@ class ConfigManager:
         except Exception as e:
             print(f"Error loading configuration file: {e}")
             self.create_config_file()
-            self.config_data = {}
     
     def save_config(self):
         try:
@@ -296,6 +295,13 @@ class ConfigManager:
 
     def __enter__(self):
         return self
+
+    def end(self):
+        try:
+            if self.expansion:
+                self.expansion.end()
+        except Exception:
+            pass
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.end()

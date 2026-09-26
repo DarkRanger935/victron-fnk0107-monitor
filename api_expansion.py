@@ -247,6 +247,8 @@ class Expansion:
         self.board_type = None
         
         self._initialize_controller()
+        if self.case_controller is None:
+            raise RuntimeError(f"Unsupported or unavailable expansion board: {self.board_type or 'unknown'}")
         self._map_controller_function()
 
     def get_board_type(self):

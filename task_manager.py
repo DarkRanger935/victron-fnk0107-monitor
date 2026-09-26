@@ -21,9 +21,9 @@ class TaskManager:
         Args:
             config_file (str): Path to the configuration file
         """
-        self.config_manager = ConfigManager(config_file)
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.config_path = os.path.join(self.script_dir, config_file)
+        self.config_manager = ConfigManager(self.config_path)
         self.running_processes = {}  # Store running processes
         self.monitor_thread = None
         self.monitoring = False

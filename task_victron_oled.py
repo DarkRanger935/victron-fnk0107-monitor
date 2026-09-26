@@ -429,6 +429,7 @@ class VictronOLEDTask:
                 
                 if alert_active:
                     # Display alert instead of normal screens
+                    screen_start_time = time.time()
                     self.oled_ui_low_voltage_alert(voltage)
                 else:
                     if elapsed >= screen_duration:

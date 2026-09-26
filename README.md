@@ -305,7 +305,7 @@ Edit `app_config.json`:
 ```
 
 ### Display Timing
-`system_screen_display_time` controls each date/utilization/fan/temperature screen. `screen2.display_time` controls the Victron screen, and `screen1.display_time` remains the legacy/default system-screen timing value.
+`system_screen_display_time` controls each date/utilization/fan/temperature screen. `screen2.display_time` controls the Victron screen. `screen1.display_time` is only a backward-compatibility fallback when `system_screen_display_time` is not set.
 
 ```json
 {

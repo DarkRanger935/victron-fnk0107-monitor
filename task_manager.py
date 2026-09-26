@@ -29,6 +29,7 @@ class TaskManager:
         self.running_processes = {}  # Store running processes
         self.monitor_thread = None
         self.monitoring = False
+        self.shutting_down = False
         self.expansion = Expansion()
         led_config = self.config_manager.get_section('LED')
         fan_config = self.config_manager.get_section('Fan')
@@ -78,8 +79,37 @@ class TaskManager:
 
     def handle_signal(self, signum=None, frame=None):
         """Handle signals"""
+        with self.state_lock:
+            if self.shutting_down:
+                return
+            self.shutting_down = True
         print("Received signal:", signum)
-        self.stop_all_tasks()
+        self.stop_monitoring()
+
+    def _start_managed_task(self, task):
+        task_path = task["path"]
+        with self.state_lock:
+            if task_path in self.running_processes:
+                return
+            self.running_processes[task_path] = None
+
+        proc = self.start_task(task)
+
+        with self.state_lock:
+            if task_path not in self.running_processes:
+                if proc and proc.poll() is None:
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait()
+                return
+
+            if proc:
+                self.running_processes[task_path] = proc
+            else:
+                self.running_processes.pop(task_path, None)
 
     def get_enabled_tasks(self):
         """
@@ -231,6 +261,9 @@ class TaskManager:
         """
         with self.state_lock:
             proc = self.running_processes.get(task_path)
+            if proc is None and task_path in self.running_processes:
+                self.running_processes.pop(task_path, None)
+                return
 
         if proc:
             if proc.poll() is None:  # Check if process is still running
@@ -257,12 +290,7 @@ class TaskManager:
             
         # Start all enabled tasks as separate processes
         for task in enabled_tasks:
-            task_path = task["path"]
-            with self.state_lock:
-                if task_path not in self.running_processes:
-                    proc = self.start_task(task)
-                    if proc:
-                        self.running_processes[task_path] = proc
+            self._start_managed_task(task)
 
     def _monitor_tasks(self):
         """
@@ -296,12 +324,7 @@ class TaskManager:
                 
                 # Start newly enabled tasks
                 for task in enabled_tasks:
-                    task_path = task["path"]
-                    with self.state_lock:
-                        if task_path not in self.running_processes:
-                            proc = self.start_task(task)
-                            if proc:
-                                self.running_processes[task_path] = proc
+                    self._start_managed_task(task)
                 
                 # Stop disabled tasks
                 for task in disabled_tasks:

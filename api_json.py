@@ -13,7 +13,10 @@ class ConfigManager:
         Args:
             config_file (str): Configuration file path
         """
-        self.expansion = Expansion()
+        try:
+            self.expansion = Expansion()
+        except Exception:
+            self.expansion = None
         self.config_file = config_file
         self.config_data = {}
         self._dirty_sections = set()
@@ -166,10 +169,13 @@ class ConfigManager:
         fan_map_default = [0, 255]
         
         # Determine board type to handle differences between FNK0100 and FNK0107
-        board_type = self.expansion.get_board_type()
+        board_type = self.expansion.get_board_type() if self.expansion else None
         
         # Safely get configuration from expansion board based on board type
         try:
+            if not self.expansion:
+                raise RuntimeError("Expansion board unavailable")
+
             led_mode = self.expansion.get_led_mode()
             # Map actual LED modes to UI-friendly values
             if led_mode == 4:  # Rainbow mode

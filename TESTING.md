@@ -39,6 +39,22 @@ cd victron-fnk0107-monitor
 # Install system dependencies
 sudo apt-get update
 sudo apt-get install -y $(grep -Ev '^(#|$)' requirements.txt | tr '\n' ' ')
+sudo apt-get install -y stress-ng cu
+
+# Make repository modules importable from any working directory
+python3 - <<'PY'
+from pathlib import Path
+import site
+
+repo_path = Path.home() / "victron-fnk0107-monitor"
+user_site = Path(site.getusersitepackages())
+user_site.mkdir(parents=True, exist_ok=True)
+(user_site / "victron_fnk0107_monitor.pth").write_text(f"{repo_path}\n", encoding="utf-8")
+print(f"Created {user_site / 'victron_fnk0107_monitor.pth'} -> {repo_path}")
+PY
+
+# Verify Python imports before hardware tests
+python3 -c "import api_expansion, api_oled, api_victron, api_systemInfo, api_systeminfo; print('✓ Python imports working')"
 ```
 
 ## Testing Phases

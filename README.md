@@ -68,6 +68,18 @@ cd victron-fnk0107-monitor
 ```bash
 sudo apt-get update
 sudo apt-get install -y $(grep -Ev '^(#|$)' requirements.txt | tr '\n' ' ')
+
+# Make repository modules importable from any working directory
+python3 - <<'PY'
+from pathlib import Path
+import site
+
+repo_path = Path.home() / "victron-fnk0107-monitor"
+user_site = Path(site.getusersitepackages())
+user_site.mkdir(parents=True, exist_ok=True)
+(user_site / "victron_fnk0107_monitor.pth").write_text(f"{repo_path}\n", encoding="utf-8")
+print(f"Created {user_site / 'victron_fnk0107_monitor.pth'} -> {repo_path}")
+PY
 ```
 
 **Why system packages?**
@@ -86,6 +98,11 @@ sudo raspi-config
 ```bash
 ls -la /dev/serial/by-id/
 # Should show: usb-VictronEnergy_BV_VE_Direct_cable_VEAWDPFF-if00-port0
+```
+
+### 4.1 Verify Python Module Imports
+```bash
+python3 -c "import api_expansion, api_oled, api_victron, api_systemInfo, api_systeminfo; print('api_* imports OK')"
 ```
 
 ### 5. Verify I2C Devices
@@ -150,6 +167,7 @@ victron-fnk0107-monitor/
 ├── api_expansion.py              # FNK0107 case control (from Freenove)
 ├── api_json.py                   # Configuration management
 ├── api_systemInfo.py             # Pi system information (from Freenove)
+├── api_systeminfo.py             # Lowercase compatibility import shim
 ├── api_oled.py                   # OLED display (from Freenove)
 ├── task_victron_oled.py          # Main integrated task
 ├── task_led.py                   # LED control daemon

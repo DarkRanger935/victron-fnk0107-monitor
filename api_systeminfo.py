@@ -10,8 +10,12 @@ except ModuleNotFoundError:
     if _spec is None or _spec.loader is None:
         raise ImportError(f"Could not load api_systemInfo from {_module_path}")
     _api_systemInfo = module_from_spec(_spec)
-    sys.modules["api_systemInfo"] = _api_systemInfo
-    _spec.loader.exec_module(_api_systemInfo)
+    try:
+        sys.modules["api_systemInfo"] = _api_systemInfo
+        _spec.loader.exec_module(_api_systemInfo)
+    except Exception:
+        sys.modules.pop("api_systemInfo", None)
+        raise
 
 _public_names = getattr(_api_systemInfo, "__all__", [name for name in dir(_api_systemInfo) if not name.startswith("_")])
 for _name in _public_names:

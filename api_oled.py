@@ -19,10 +19,11 @@ class OLED:
         # Initialize I2C interface and OLED display
         self.bus_number = bus_number
         self.i2c_address = i2c_address
-        self.rotate_angle = self._angle_to_rotate_param(rotate_angle)
+        self.rotate_angle = rotate_angle
+        self.rotate = self._angle_to_rotate_param(rotate_angle)
         self.serial = i2c(port=self.bus_number, address=self.i2c_address)
         # Use ssd1306 constructor's rotate parameter
-        self.device = ssd1306(self.serial, rotate=self.rotate_angle)
+        self.device = ssd1306(self.serial, rotate=self.rotate)
         self.width = 128
         self.height = 64
         
@@ -62,6 +63,7 @@ class OLED:
         # Convert angle to format required by luma.oled
         rotate_param = self._angle_to_rotate_param(angle)
         self.rotate_angle = angle  # Save original angle value
+        self.rotate = rotate_param
         # Recreate device with new rotation parameter
         self.device = ssd1306(self.serial, rotate=rotate_param)
         # Recreate buffer to match new dimensions
@@ -414,6 +416,8 @@ class OLED:
             outline: Semicircle border color
             fill: Sector fill color
         """
+        percentage = max(0.0, min(100.0, float(percentage)))
+
         # Determine start and end angles
         if orientation == "top":
             start_angle = 180

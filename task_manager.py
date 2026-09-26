@@ -23,6 +23,7 @@ class TaskManager:
         """
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.config_path = os.path.join(self.script_dir, config_file)
+        self.state_lock = threading.RLock()
         self.config_manager = ConfigManager(self.config_path)
         self.running_processes = {}  # Store running processes
         self.monitor_thread = None
@@ -227,8 +228,10 @@ class TaskManager:
         Args:
             task_path (str): Path to the task file
         """
-        if task_path in self.running_processes:
-            proc = self.running_processes[task_path]
+        with self.state_lock:
+            proc = self.running_processes.get(task_path)
+
+        if proc:
             if proc.poll() is None:  # Check if process is still running
                 proc.terminate()
                 try:
@@ -236,7 +239,8 @@ class TaskManager:
                 except subprocess.TimeoutExpired:
                     proc.kill()
                     proc.wait()  # Wait for force kill to complete
-            del self.running_processes[task_path]
+            with self.state_lock:
+                self.running_processes.pop(task_path, None)
             print(f"Stopped task: {task_path}")
 
     def execute_enabled_tasks(self):
@@ -253,10 +257,13 @@ class TaskManager:
         # Start all enabled tasks as separate processes
         for task in enabled_tasks:
             task_path = task["path"]
-            if task_path not in self.running_processes:
+            with self.state_lock:
+                should_start = task_path not in self.running_processes
+            if should_start:
                 proc = self.start_task(task)
                 if proc:
-                    self.running_processes[task_path] = proc
+                    with self.state_lock:
+                        self.running_processes[task_path] = proc
 
     def _monitor_tasks(self):
         """
@@ -291,15 +298,20 @@ class TaskManager:
                 # Start newly enabled tasks
                 for task in enabled_tasks:
                     task_path = task["path"]
-                    if task_path not in self.running_processes:
+                    with self.state_lock:
+                        should_start = task_path not in self.running_processes
+                    if should_start:
                         proc = self.start_task(task)
                         if proc:
-                            self.running_processes[task_path] = proc
+                            with self.state_lock:
+                                self.running_processes[task_path] = proc
                 
                 # Stop disabled tasks
                 for task in disabled_tasks:
                     task_path = task["path"]
-                    if task_path in self.running_processes:
+                    with self.state_lock:
+                        should_stop = task_path in self.running_processes
+                    if should_stop:
                         self.stop_task(task_path)
                 
                 time.sleep(0.3)  # Check every 0.3 seconds
@@ -312,22 +324,28 @@ class TaskManager:
         """
         Start the monitoring thread
         """
-        if not self.monitoring:
+        with self.state_lock:
+            if self.monitoring:
+                return
             self.monitoring = True
             self.monitor_thread = threading.Thread(target=self._monitor_tasks, daemon=True)
             self.monitor_thread.start()
-            print("Task monitoring started")
+        print("Task monitoring started")
 
     def stop_monitoring(self):
         """
         Stop the monitoring thread and all running tasks
         """
-        self.monitoring = False
-        if self.monitor_thread and self.monitor_thread.is_alive():
-            self.monitor_thread.join()
+        with self.state_lock:
+            self.monitoring = False
+            monitor_thread = self.monitor_thread
+        if monitor_thread and monitor_thread.is_alive():
+            monitor_thread.join()
         
         # Stop all running tasks
-        for task_path in list(self.running_processes.keys()):
+        with self.state_lock:
+            task_paths = list(self.running_processes.keys())
+        for task_path in task_paths:
             self.stop_task(task_path)
 
         self.config_manager.load_config()

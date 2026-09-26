@@ -377,7 +377,7 @@ class OLED:
         percentage = float(percentage)
         
         # Ensure percentage is within valid range
-        percentage = max(0.5, min(100.0, percentage))
+        percentage = max(0.0, min(100.0, percentage))
         
         # Calculate percentage corresponding angle (0 to 360 degrees)
         angle = (percentage / 100.0) * 360.0

@@ -234,94 +234,91 @@ class ConfigManager:
             print(f"Error getting configuration from expansion board: {e}")
         
         try:
-            if not os.path.exists(self.config_file):
-                # Create basic configuration structure without optional fan features
-                config = {
-                    "Monitor": {
-                        "screen_orientation": 0,
-                        "follow_led_color": 0
+            # Create basic configuration structure without optional fan features
+            config = {
+                "Monitor": {
+                    "screen_orientation": 0,
+                    "follow_led_color": 0
+                },
+                "LED": {
+                    "mode": led_mode_default,
+                    "red_value": 0,
+                    "green_value": 0,
+                    "blue_value": 255,
+                    "task_name": "task_led.py",
+                    "is_run_on_startup": True
+                },
+                "Fan": {
+                    "mode": fan_mode_default,
+                    "task_name": "task_fan.py",
+                    "is_run_on_startup": True
+                },
+                "OLED": {
+                    "task_name": "task_oled.py",
+                    "is_run_on_startup": True,
+                    "screen1": {
+                        "data_format": 0,
+                        "time_format": 0,
+                        "display_time": 3.0,
+                        "is_run_on_oled": True
                     },
-                    "LED": {
-                        "mode": led_mode_default,
-                        "red_value": 0,
-                        "green_value": 0,
-                        "blue_value": 255,
-                        "task_name": "task_led.py",
-                        "is_run_on_startup": True
+                    "screen2": {
+                        "interchange": 0,
+                        "display_time": 3.0,
+                        "is_run_on_oled": True
                     },
-                    "Fan": {
-                        "mode": fan_mode_default,
-                        "task_name": "task_fan.py",
-                        "is_run_on_startup": True
+                    "screen3": {
+                        "interchange": 0,
+                        "display_time": 3.0,
+                        "cpu_temp_celsius_or_fahrenheit": False,
+                        "case_temp_celsius_or_fahrenheit": False,
+                        "is_run_on_oled": True
                     },
-                    "OLED": {
-                        "task_name": "task_oled.py",
-                        "is_run_on_startup": True,
-                        "screen1": {
-                            "data_format": 0,
-                            "time_format": 0,
-                            "display_time": 3.0,
-                            "is_run_on_oled": True
-                        },
-                        "screen2": {
-                            "interchange": 0,
-                            "display_time": 3.0,
-                            "is_run_on_oled": True
-                        },
-                        "screen3": {
-                            "interchange": 0,
-                            "display_time": 3.0,
-                            "cpu_temp_celsius_or_fahrenheit": False,
-                            "case_temp_celsius_or_fahrenheit": False,
-                            "is_run_on_oled": True
-                        },
-                        "screen4": {
-                            "interchange": 0,
-                            "display_time": 3.0,
-                            "is_run_on_oled": True
-                        }
-                    },
-                    "Service": {
-                        "is_exist_on_rpi": False,
-                        "is_run_on_startup": False
+                    "screen4": {
+                        "interchange": 0,
+                        "display_time": 3.0,
+                        "is_run_on_oled": True
                     }
+                },
+                "Service": {
+                    "is_exist_on_rpi": False,
+                    "is_run_on_startup": False
                 }
-                
-                # Add fan configuration items based on board capabilities
-                # Add basic fan duty cycle settings (common to both boards)
-                config["Fan"]["mode1_fan_group1"] = 75
-                config["Fan"]["mode1_fan_group2"] = 75
-                
-                # Add board-specific fan duty cycle settings
-                if board_type == "FNK0107":
-                    # Add third fan for FNK0107
-                    config["Fan"]["mode1_fan_group3"] = 75
-                
-                # Add temperature threshold settings (number varies by board)
-                config["Fan"]["mode2_low_temp_threshold"] = fan_temp_threshold_default[0]
-                config["Fan"]["mode2_high_temp_threshold"] = fan_temp_threshold_default[1]
-                
-                # Add schmitt trigger setting only for FNK0107 (which returns 3 values from get_fan_threshold)
-                if board_type == "FNK0107":
-                    config["Fan"]["mode2_temp_schmitt"] = fan_temp_threshold_default[2]
-                
-                # Add temperature mode speeds only for FNK0107
-                if board_type == "FNK0107":
-                    config["Fan"]["mode2_low_speed"] = fan_temp_speed_default[0]
-                    config["Fan"]["mode2_middle_speed"] = fan_temp_speed_default[1]
-                    config["Fan"]["mode2_high_speed"] = fan_temp_speed_default[2]
-                
-                # Add PI following settings only for FNK0107
-                if board_type == "FNK0107":
-                    config["Fan"]["mode3_min_speed_mapping"] = fan_map_default[0]
-                    config["Fan"]["mode3_max_speed_mapping"] = fan_map_default[1]
-                
-                self.config_data = config
-                self._dirty_sections.clear()
-                self._replace_all = True
-                self.save_config()
-            else:
-                print(f"Configuration file already exists: {self.config_file}")
+            }
+            
+            # Add fan configuration items based on board capabilities
+            # Add basic fan duty cycle settings (common to both boards)
+            config["Fan"]["mode1_fan_group1"] = 75
+            config["Fan"]["mode1_fan_group2"] = 75
+            
+            # Add board-specific fan duty cycle settings
+            if board_type == "FNK0107":
+                # Add third fan for FNK0107
+                config["Fan"]["mode1_fan_group3"] = 75
+            
+            # Add temperature threshold settings (number varies by board)
+            config["Fan"]["mode2_low_temp_threshold"] = fan_temp_threshold_default[0]
+            config["Fan"]["mode2_high_temp_threshold"] = fan_temp_threshold_default[1]
+            
+            # Add schmitt trigger setting only for FNK0107 (which returns 3 values from get_fan_threshold)
+            if board_type == "FNK0107":
+                config["Fan"]["mode2_temp_schmitt"] = fan_temp_threshold_default[2]
+            
+            # Add temperature mode speeds only for FNK0107
+            if board_type == "FNK0107":
+                config["Fan"]["mode2_low_speed"] = fan_temp_speed_default[0]
+                config["Fan"]["mode2_middle_speed"] = fan_temp_speed_default[1]
+                config["Fan"]["mode2_high_speed"] = fan_temp_speed_default[2]
+            
+            # Add PI following settings only for FNK0107
+            if board_type == "FNK0107":
+                config["Fan"]["mode3_min_speed_mapping"] = fan_map_default[0]
+                config["Fan"]["mode3_max_speed_mapping"] = fan_map_default[1]
+            
+            self.config_data = config
+            self._dirty_sections.clear()
+            self._replace_all = True
+            self.save_config()
         except Exception as e:
             print(f"Error creating configuration file: {e}")
 

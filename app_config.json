@@ -19,18 +19,13 @@
   "OLED": {
     "task_name": "task_victron_oled.py",
     "is_run_on_startup": true,
-    "timing_note": "system_screen_display_time overrides screen1.display_time; screen1.display_time is kept for backward compatibility",
-    "system_screen_display_time": 8.0,
-    "screen1": {
-      "data_format": 0,
-      "time_format": 0,
-      "display_time": 35.0,
-      "is_run_on_oled": true
-    },
-    "screen2": {
-      "interchange": 0,
-      "display_time": 35.0,
-      "is_run_on_oled": true
+    "timing_note": "screen_durations sets each screen duration; screen1 and screen2 timing values are legacy fallbacks",
+    "screen_durations": {
+      "date_time": 7.0,
+      "utilization": 15.0,
+      "fans": 7.0,
+      "temperatures": 7.0,
+      "victron": 30.0
     }
   },
   "Victron": {

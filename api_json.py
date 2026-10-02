@@ -260,6 +260,13 @@ class ConfigManager:
                 "OLED": {
                     "task_name": "task_oled.py",
                     "is_run_on_startup": True,
+                    "screen_durations": {
+                        "date_time": 7.0,
+                        "utilization": 15.0,
+                        "fans": 7.0,
+                        "temperatures": 7.0,
+                        "victron": 30.0
+                    },
                     "screen1": {
                         "data_format": 0,
                         "time_format": 0,

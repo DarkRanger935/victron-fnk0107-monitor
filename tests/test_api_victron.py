@@ -57,13 +57,13 @@ class VictronMonitorFormattingTests(unittest.TestCase):
         self.assertEqual(self.monitor.format_ttg(61), "1h 1m")
 
     def test_format_current_handles_charging(self):
-        self.assertEqual(self.monitor.format_current(5.2), "5.2A ↑")
+        self.assertEqual(self.monitor.format_current(5.2), "5.20A ↑")
 
     def test_format_current_handles_discharging(self):
-        self.assertEqual(self.monitor.format_current(-3.1), "3.1A ↓")
+        self.assertEqual(self.monitor.format_current(-3.1), "3.10A ↓")
 
     def test_format_current_handles_idle(self):
-        self.assertEqual(self.monitor.format_current(0), "0.0A")
+        self.assertEqual(self.monitor.format_current(0), "0.00A")
 
 
 if __name__ == "__main__":

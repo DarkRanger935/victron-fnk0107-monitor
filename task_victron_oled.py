@@ -73,13 +73,7 @@ class VictronOLEDTask:
             self.config_manager.get_value('LED', 'blue_value') or 6,
         )
         
-        screen1_config = self.config_manager.get_value('OLED', 'screen1') or {}
-        screen2_config = self.config_manager.get_value('OLED', 'screen2') or {}
-        self.screen1_duration = screen1_config.get('display_time', 35.0)
-        self.screen2_duration = screen2_config.get('display_time', 35.0)
-        self.system_screen_duration = self.config_manager.get_value('OLED', 'system_screen_display_time')
-        if self.system_screen_duration is None:
-            self.system_screen_duration = self.screen1_duration
+        self.screen_durations = self.get_configured_screen_durations(oled_config)
         
         try:
             self.expansion = Expansion()
@@ -241,25 +235,50 @@ class VictronOLEDTask:
             self.last_led_color = color
     
     def format_power_header(self, voltage, current):
-        """Format power and flow direction for the Victron header."""
+        """Format power for the Victron screen."""
         watts = abs(voltage * current)
-        if watts < 10:
-            power_text = f"{watts:.1f}W"
-        else:
-            power_text = f"{watts:.0f}W"
+        return f"{watts:.2f}W"
+
+    @staticmethod
+    def get_charge_direction(current):
         if current > 0:
-            arrow = '↑'
+            return '↑'
         elif current < 0:
-            arrow = '↓'
-        else:
-            arrow = '→'
-        return f"{power_text} {arrow}"
+            return '↓'
+        return '→'
     
     def get_screen_duration(self, screen_name):
         """Return the configured duration for a given screen."""
-        if screen_name == "victron":
-            return self.screen2_duration
-        return self.system_screen_duration
+        return self.screen_durations.get(screen_name, 7.0)
+
+    @staticmethod
+    def get_configured_screen_durations(oled_config):
+        """Resolve per-screen durations with support for legacy timing settings."""
+        defaults = {
+            "date_time": 7.0,
+            "utilization": 15.0,
+            "fans": 7.0,
+            "temperatures": 7.0,
+            "victron": 30.0,
+        }
+        configured = oled_config.get("screen_durations") or {}
+        legacy_system_duration = oled_config.get("system_screen_display_time")
+        screen1_config = oled_config.get("screen1") or {}
+        screen2_config = oled_config.get("screen2") or {}
+        if legacy_system_duration is None:
+            legacy_system_duration = screen1_config.get("display_time")
+
+        durations = {}
+        for screen_name, default_duration in defaults.items():
+            if configured.get(screen_name) is not None:
+                durations[screen_name] = configured[screen_name]
+            elif screen_name == "victron":
+                durations[screen_name] = screen2_config.get("display_time", default_duration)
+            else:
+                durations[screen_name] = (
+                    legacy_system_duration if legacy_system_duration is not None else default_duration
+                )
+        return durations
     
     def get_usage_percent(self, usage_data):
         """Normalize usage values to a single numeric percentage."""
@@ -292,7 +311,14 @@ class VictronOLEDTask:
         elif screen_name == "temperatures":
             self.oled_ui_temperatures(snapshot["cpu_temp"], snapshot["case_temp"])
         else:
-            self.oled_ui_victron_stats(snapshot["power_text"], snapshot["voltage"], snapshot["current_str"], snapshot["soc"], snapshot["rem_str"])
+            self.oled_ui_victron_stats(
+                snapshot["power_text"],
+                snapshot["voltage"],
+                snapshot["current_str"],
+                snapshot["soc"],
+                snapshot["rem_str"],
+                snapshot.get("direction_arrow", "→"),
+            )
     
     def oled_ui_date_time(self, date_str, time_str):
         """Display the date and time on a dedicated screen."""
@@ -368,18 +394,26 @@ class VictronOLEDTask:
         
         self.oled.show()
     
-    def oled_ui_victron_stats(self, power_text, voltage, current_str, soc, rem_str):
+    def oled_ui_victron_stats(self, power_text, voltage, current_str, soc, rem_str, direction_arrow="→"):
         """
         Display Victron battery statistics
         """
         self.oled.clear()
-        line_font = 12
-        self.oled.draw_text(power_text, position=((0, 0), (128, 12)), directory="left", offset=(4, 0), font_size=line_font)
-        voltage_text = f"{float(voltage):.1f}V" if self.is_valid_voltage(voltage) else "Shunt Err"
-        self.oled.draw_text(voltage_text, position=((0, 13), (128, 25)), directory="left", offset=(4, 0), font_size=line_font)
-        self.oled.draw_text(current_str, position=((0, 26), (128, 38)), directory="left", offset=(4, 0), font_size=line_font)
-        self.oled.draw_text(f"SOC {soc}%", position=((0, 39), (128, 51)), directory="left", offset=(4, 0), font_size=line_font)
-        self.oled.draw_text(f"Rem {rem_str}", position=((0, 52), (128, 64)), directory="left", offset=(4, 0), font_size=line_font)
+        power_font = 12 if power_text == "Shunt Err" else 14
+        self.oled.draw_text(power_text, position=((0, 0), (64, 20)), directory="left", offset=(2, 0), font_size=power_font)
+        self.oled.draw_text(direction_arrow, position=((56, 0), (74, 20)), directory="center", offset=(0, 0), font_size=14)
+        current_readout = current_str.split()[0] if current_str else "0.00A"
+        self.oled.draw_text(current_readout, position=((74, 0), (128, 20)), directory="right", offset=(-2, 0), font_size=14)
+
+        voltage_text = f"{float(voltage):.2f}V" if self.is_valid_voltage(voltage) else "Shunt Err"
+        voltage_font = 14 if self.is_valid_voltage(voltage) else 12
+        self.oled.draw_text(voltage_text, position=((0, 22), (64, 42)), directory="left", offset=(2, 0), font_size=voltage_font)
+        if self.is_valid_voltage(soc):
+            soc_text = f"{float(soc):.2f}%"
+        else:
+            soc_text = str(soc)
+        self.oled.draw_text(soc_text, position=((64, 22), (128, 42)), directory="right", offset=(-2, 0), font_size=14)
+        self.oled.draw_text(f"Rem {rem_str}", position=((0, 46), (128, 64)), directory="center", offset=(0, 0), font_size=14)
         
         self.oled.show()
     
@@ -491,6 +525,7 @@ class VictronOLEDTask:
                     "case_temp": case_temp,
                     "fan_speeds": fan_speeds,
                     "power_text": power_text,
+                    "direction_arrow": self.get_charge_direction(current),
                     "voltage": voltage,
                     "current_str": current_str,
                     "soc": soc,

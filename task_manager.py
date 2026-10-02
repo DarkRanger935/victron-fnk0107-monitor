@@ -32,6 +32,7 @@ class TaskManager:
         self.python_executable = "/usr/bin/python3"
         self.state_lock = threading.RLock()
         self.config_manager = ConfigManager(self.config_path)
+        self.sync_battery_capacity()
         self.running_processes = {}  # Store running processes
         self.monitor_thread = None
         self.monitoring = False
@@ -50,6 +51,34 @@ class TaskManager:
         signal.signal(signal.SIGTERM, self.handle_signal)
         signal.signal(signal.SIGINT, self.handle_signal)
 
+    def sync_battery_capacity(self):
+        """Load a missing capacity from the shunt, then apply the configured value once."""
+        victron_config = self.config_manager.get_section("Victron")
+        if not isinstance(victron_config, dict):
+            victron_config = {}
+
+        monitor = api_victron.VictronMonitor(
+            port=victron_config.get("port") or "/dev/ttyUSB0",
+            baudrate=victron_config.get("baudrate", 19200),
+            timeout=victron_config.get("timeout", 1),
+        )
+        try:
+            if not monitor.connect():
+                return
+
+            capacity_ah = victron_config.get("battery_capacity_ah")
+            if capacity_ah is None:
+                capacity_ah = monitor.read_battery_capacity()
+                self.config_manager.set_value("Victron", "battery_capacity_ah", capacity_ah)
+                self.config_manager.save_config()
+
+            monitor.write_battery_capacity(capacity_ah)
+            print(f"Applied shunt battery capacity: {int(capacity_ah)} Ah")
+        except Exception as error:
+            print(f"Unable to synchronize shunt battery capacity: {error}")
+        finally:
+            if monitor.serial_conn and monitor.serial_conn.is_open:
+                monitor.serial_conn.close()
 
     def send_led_mode_to_expansion(self, led_mode):
         """Send LED mode to expansion board"""

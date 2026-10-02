@@ -12,7 +12,7 @@ A comprehensive power monitoring system for Raspberry Pi 5 that seamlessly integ
 ### System Display
 - **Date / Time Screen**
 - **Utilization Screen**: CPU, Memory, Disk pie charts
-- **Fan Screen**: Per-fan duty pie charts
+- **Fan Screen**: CPU and case-fan PWM pie charts
 - **Temperature Screen**: CPU and case temperatures
 - **Victron Screen**: Power header, voltage, current, SOC, and time remaining
 
@@ -97,7 +97,8 @@ Edit `app_config.json`:
     "baudrate": 19200,
     "timeout": 1,
     "low_voltage_threshold": 12.8,
-    "critical_voltage_threshold": 12.7
+    "critical_voltage_threshold": 12.7,
+    "battery_capacity_ah": null
   },
   "OLED": {
     "system_screen_display_time": 8.0,
@@ -110,6 +111,7 @@ Edit `app_config.json`:
   }
 }
 ```
+`battery_capacity_ah` is a whole number of amp-hours. Leave it `null` to read the current capacity from the shunt on startup; the configured value is then written to the shunt once each time the service starts.
 
 ## 🔧 Quick Start
 

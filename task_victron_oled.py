@@ -10,6 +10,7 @@ import atexit
 import signal
 import subprocess
 import os
+import math
 from datetime import datetime, timedelta
 
 try:
@@ -155,6 +156,9 @@ class VictronOLEDTask:
         Returns:
             tuple: (alert_active, should_shutdown)
         """
+        if not self.is_valid_voltage(voltage):
+            return False, False
+        voltage = float(voltage)
         if voltage < self.critical_voltage_threshold:
             # Critical shutdown
             return True, True
@@ -164,6 +168,15 @@ class VictronOLEDTask:
         else:
             # Normal
             return False, False
+
+    @staticmethod
+    def is_valid_voltage(voltage):
+        if isinstance(voltage, bool):
+            return False
+        try:
+            return math.isfinite(float(voltage))
+        except (TypeError, ValueError, OverflowError):
+            return False
     
     def update_led_state(self, alert_active):
         """
@@ -257,6 +270,16 @@ class VictronOLEDTask:
     def normalize_usage_values(self, memory_usage, disk_usage):
         """Normalize memory and disk usage inputs to percentage scalars."""
         return self.get_usage_percent(memory_usage), self.get_usage_percent(disk_usage)
+
+    def get_fan_speeds(self):
+        """Return CPU and first two case-fan PWM readings as percentages."""
+        case_duty = self.expansion.get_fan_duty()
+        if isinstance(case_duty, (list, tuple)):
+            case_duties = list(case_duty[:2])
+        else:
+            case_duties = [case_duty]
+        duties = [self.system_info.get_raspberry_pi_fan_duty()] + case_duties
+        return [duty / 255.0 * 100 for duty in duties]
     
     def render_screen(self, screen_name, snapshot):
         """Render the active OLED screen from a prepared snapshot."""
@@ -307,18 +330,18 @@ class VictronOLEDTask:
         
         if len(fan_speeds) >= 3:
             fan_layout = [
-                ("F1", fan_speeds[0], ((0, 4), (42, 60)), (21, 28)),
-                ("F2", fan_speeds[1], ((43, 4), (85, 60)), (64, 28)),
-                ("F3", fan_speeds[2], ((86, 4), (128, 60)), (107, 28)),
+                ("CPU", fan_speeds[0], ((0, 4), (42, 60)), (21, 28)),
+                ("F1", fan_speeds[1], ((43, 4), (85, 60)), (64, 28)),
+                ("F2", fan_speeds[2], ((86, 4), (128, 60)), (107, 28)),
             ]
         elif len(fan_speeds) >= 2:
             fan_layout = [
-                ("F1", fan_speeds[0], ((0, 4), (64, 60)), (32, 28)),
-                ("F2", fan_speeds[1], ((64, 4), (128, 60)), (96, 28)),
+                ("CPU", fan_speeds[0], ((0, 4), (64, 60)), (32, 28)),
+                ("F1", fan_speeds[1], ((64, 4), (128, 60)), (96, 28)),
             ]
         elif fan_speeds:
             fan_layout = [
-                ("F1", fan_speeds[0], ((0, 4), (128, 60)), (64, 28)),
+                ("CPU", fan_speeds[0], ((0, 4), (128, 60)), (64, 28)),
             ]
         else:
             self.oled.draw_text("No fan data", position=((0, 26), (128, 40)), directory="center", offset=(0, 0), font_size=12)
@@ -352,7 +375,8 @@ class VictronOLEDTask:
         self.oled.clear()
         line_font = 12
         self.oled.draw_text(power_text, position=((0, 0), (128, 12)), directory="left", offset=(4, 0), font_size=line_font)
-        self.oled.draw_text(f"{voltage:.1f}V", position=((0, 13), (128, 25)), directory="left", offset=(4, 0), font_size=line_font)
+        voltage_text = f"{float(voltage):.1f}V" if self.is_valid_voltage(voltage) else "Shunt Err"
+        self.oled.draw_text(voltage_text, position=((0, 13), (128, 25)), directory="left", offset=(4, 0), font_size=line_font)
         self.oled.draw_text(current_str, position=((0, 26), (128, 38)), directory="left", offset=(4, 0), font_size=line_font)
         self.oled.draw_text(f"SOC {soc}%", position=((0, 39), (128, 51)), directory="left", offset=(4, 0), font_size=line_font)
         self.oled.draw_text(f"Rem {rem_str}", position=((0, 52), (128, 64)), directory="left", offset=(4, 0), font_size=line_font)
@@ -383,7 +407,7 @@ class VictronOLEDTask:
         
         self.oled.show()
     
-    def graceful_shutdown(self):
+    def graceful_shutdown(self, countdown_seconds=30):
         """
         Perform graceful shutdown when voltage drops below critical threshold
         """
@@ -391,19 +415,18 @@ class VictronOLEDTask:
         print("CRITICAL VOLTAGE - INITIATING GRACEFUL SHUTDOWN")
         print("="*50)
         
-        # Display shutdown message on OLED
-        self.oled.clear()
-        self.oled.draw_rectangle((0, 0, self.oled.width-1, self.oled.height-1), outline="white")
-        self.oled.draw_text("SHUTDOWN", position=((0, 20), (128, 30)), directory="center", offset=(0, 0), font_size=14)
-        self.oled.draw_text("Critical Voltage", position=((0, 35), (128, 45)), directory="center", offset=(0, 0), font_size=11)
-        self.oled.draw_text("System halting...", position=((0, 50), (128, 60)), directory="center", offset=(0, 0), font_size=10)
-        self.oled.show()
-        
         # Turn off LED
         self.expansion.set_all_led_color(0, 0, 0)
         self.expansion.set_led_mode(0)
         
-        time.sleep(2)
+        for seconds_remaining in range(countdown_seconds, 0, -1):
+            self.oled.clear()
+            self.oled.draw_rectangle((0, 0, self.oled.width-1, self.oled.height-1), outline="white")
+            self.oled.draw_text("SHUTDOWN", position=((0, 12), (128, 24)), directory="center", offset=(0, 0), font_size=14)
+            self.oled.draw_text("Critical Voltage", position=((0, 26), (128, 38)), directory="center", offset=(0, 0), font_size=11)
+            self.oled.draw_text(f"Shutdown in {seconds_remaining}s", position=((0, 42), (128, 56)), directory="center", offset=(0, 0), font_size=11)
+            self.oled.show()
+            time.sleep(1)
         
         # Execute shutdown
         try:
@@ -450,12 +473,14 @@ class VictronOLEDTask:
                 disk_usage = self.system_info.get_raspberry_pi_disk_usage()
                 cpu_temp = self.system_info.get_raspberry_pi_cpu_temperature()
                 case_temp = self.expansion.get_temp()
-                fan_duty = self.expansion.get_fan_duty()
-                fan_speeds = [d / 255.0 * 100 for d in (fan_duty if isinstance(fan_duty, list) else [fan_duty])]
+                fan_speeds = self.get_fan_speeds()
                 memory_percent, disk_percent = self.normalize_usage_values(memory_usage, disk_usage)
                 current_str = self.victron.format_current(current)
                 rem_str = self.victron.format_ttg(ttg)
-                power_text = self.format_power_header(voltage, current)
+                if self.is_valid_voltage(voltage):
+                    power_text = self.format_power_header(float(voltage), current)
+                else:
+                    power_text = "Shunt Err"
                 screen_snapshot = {
                     "date_str": date_str,
                     "time_str": time_str,

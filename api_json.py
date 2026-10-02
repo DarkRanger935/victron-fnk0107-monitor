@@ -286,7 +286,8 @@ class ConfigManager:
                 },
                 "Victron": {
                     "low_voltage_threshold": 12.8,
-                    "critical_voltage_threshold": 12.7
+                    "critical_voltage_threshold": 12.7,
+                    "battery_capacity_ah": None
                 },
                 "Service": {
                     "is_exist_on_rpi": False,

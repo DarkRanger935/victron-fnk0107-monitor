@@ -101,12 +101,12 @@ Edit `app_config.json`:
     "battery_capacity_ah": null
   },
   "OLED": {
-    "system_screen_display_time": 8.0,
-    "screen1": {
-      "display_time": 35.0
-    },
-    "screen2": {
-      "display_time": 35.0
+    "screen_durations": {
+      "date_time": 7.0,
+      "utilization": 15.0,
+      "fans": 7.0,
+      "temperatures": 7.0,
+      "victron": 30.0
     }
   }
 }
@@ -226,12 +226,10 @@ Messages parsed:
 ```
 
 ### Screen 5: Victron Battery
-Example below shows a discharging battery, so both the power header and current line use `↓`. Charging uses `↑` for both, and `Rem` is the Victron-reported remaining time.
+Power and current share a row with the charge-direction arrow in the center. Voltage and SOC share the next row; `Rem` is the Victron-reported remaining time.
 ```
- 72W ↓
- 13.2V
- 3.3A ↓
- SOC 87%
+ 72.00W    ↑    5.40A
+ 13.20V   87.00%
  Rem 4h 32m
 ```
 
@@ -291,17 +289,17 @@ Edit `app_config.json`:
 ```
 
 ### Display Timing
-`system_screen_display_time` controls each date/utilization/fan/temperature screen. `screen2.display_time` controls the Victron screen. `screen1.display_time` is only a backward-compatibility fallback when `system_screen_display_time` is not set.
+`screen_durations` sets the rotation duration in seconds for each named screen. Defaults are 7 seconds for date/time, fan, and temperature screens; 15 seconds for utilization (CPU/memory/disk); and 30 seconds for Victron power. Older configurations using `system_screen_display_time`, `screen1.display_time`, or `screen2.display_time` remain supported as fallbacks.
 
 ```json
 {
   "OLED": {
-    "system_screen_display_time": 8.0,
-    "screen1": {
-      "display_time": 35.0
-    },
-    "screen2": {
-      "display_time": 35.0
+    "screen_durations": {
+      "date_time": 7.0,
+      "utilization": 15.0,
+      "fans": 7.0,
+      "temperatures": 7.0,
+      "victron": 30.0
     }
   }
 }

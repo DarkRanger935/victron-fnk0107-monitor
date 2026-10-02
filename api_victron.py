@@ -300,14 +300,14 @@ class VictronMonitor:
             amps (float): Current in Amps
             
         Returns:
-            str: Formatted current (e.g., "5.2A ↑", "3.1A ↓")
+            str: Formatted current (e.g., "5.20A ↑", "3.10A ↓")
         """
         if amps > 0:
-            return f"{abs(amps):.1f}A ↑"  # Charging (up)
+            return f"{abs(amps):.2f}A ↑"  # Charging (up)
         elif amps < 0:
-            return f"{abs(amps):.1f}A ↓"  # Discharging (down)
+            return f"{abs(amps):.2f}A ↓"  # Discharging (down)
         else:
-            return "0.0A"
+            return "0.00A"
 
 
 if __name__ == '__main__':

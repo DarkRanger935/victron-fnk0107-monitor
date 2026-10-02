@@ -35,11 +35,35 @@ class VictronOLEDTaskHelperTests(unittest.TestCase):
         task = self.make_task()
         self.assertEqual(task.normalize_usage_values([], ()), (0, 0))
 
-    def test_format_power_header_uses_current_sign(self):
+    def test_format_power_header_and_direction_use_two_decimals(self):
         task = self.make_task()
-        self.assertEqual(task.format_power_header(13.2, 3.3), "44W ↑")
-        self.assertEqual(task.format_power_header(13.2, -3.3), "44W ↓")
-        self.assertEqual(task.format_power_header(13.2, 0), "0.0W →")
+        self.assertEqual(task.format_power_header(13.2, 3.3), "43.56W")
+        self.assertEqual(task.format_power_header(13.2, -3.3), "43.56W")
+        self.assertEqual(task.format_power_header(13.2, 0), "0.00W")
+        self.assertEqual(task.get_charge_direction(3.3), "↑")
+        self.assertEqual(task.get_charge_direction(-3.3), "↓")
+        self.assertEqual(task.get_charge_direction(0), "→")
+
+    def test_screen_durations_match_each_screen_category(self):
+        task = self.make_task()
+        task.screen_durations = task.get_configured_screen_durations({})
+
+        screen_names = ("date_time", "utilization", "fans", "temperatures", "victron")
+        self.assertEqual([task.get_screen_duration(name) for name in screen_names], [7, 15, 7, 7, 30])
+
+    def test_screen_duration_legacy_config_remains_a_fallback(self):
+        durations = VictronOLEDTask.get_configured_screen_durations({
+            "system_screen_display_time": 9,
+            "screen2": {"display_time": 31},
+        })
+
+        self.assertEqual(durations, {
+            "date_time": 9,
+            "utilization": 9,
+            "fans": 9,
+            "temperatures": 9,
+            "victron": 31,
+        })
 
     def test_missing_or_invalid_voltage_does_not_trigger_alert(self):
         task = self.make_task()
@@ -129,12 +153,31 @@ class VictronOLEDTaskHelperTests(unittest.TestCase):
     def test_victron_screen_shows_shunt_error_for_missing_voltage(self):
         task = self.make_task()
         task.oled = Mock()
-        task.oled_ui_victron_stats("Shunt Err", None, "0.0A", 0, "N/A")
+        task.oled_ui_victron_stats("Shunt Err", None, "0.00A", 0, "N/A")
 
         self.assertIn(
-            unittest.mock.call("Shunt Err", position=((0, 13), (128, 25)), directory="left", offset=(4, 0), font_size=12),
+            unittest.mock.call("Shunt Err", position=((0, 0), (64, 20)), directory="left", offset=(2, 0), font_size=12),
             task.oled.draw_text.call_args_list,
         )
+        self.assertIn(
+            unittest.mock.call("Shunt Err", position=((0, 22), (64, 42)), directory="left", offset=(2, 0), font_size=12),
+            task.oled.draw_text.call_args_list,
+        )
+
+    def test_victron_screen_groups_two_decimal_readouts_by_row(self):
+        task = self.make_task()
+        task.oled = Mock()
+
+        task.oled_ui_victron_stats("43.56W", 13.2, "3.30A ↑", 87, "4h 32m", "↑")
+
+        calls = task.oled.draw_text.call_args_list
+        self.assertEqual([call.args[0] for call in calls], ["43.56W", "↑", "3.30A", "13.20V", "87.00%", "Rem 4h 32m"])
+        self.assertEqual(calls[0].kwargs["position"], ((0, 0), (64, 20)))
+        self.assertEqual(calls[1].kwargs["position"], ((56, 0), (74, 20)))
+        self.assertEqual(calls[2].kwargs["position"], ((74, 0), (128, 20)))
+        self.assertEqual(calls[3].kwargs["position"], ((0, 22), (64, 42)))
+        self.assertEqual(calls[4].kwargs["position"], ((64, 22), (128, 42)))
+        self.assertEqual(calls[5].kwargs["font_size"], 14)
 
     def test_graceful_shutdown_counts_down_before_poweroff(self):
         task = self.make_task()

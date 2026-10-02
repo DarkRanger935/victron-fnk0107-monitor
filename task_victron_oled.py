@@ -270,6 +270,16 @@ class VictronOLEDTask:
     def normalize_usage_values(self, memory_usage, disk_usage):
         """Normalize memory and disk usage inputs to percentage scalars."""
         return self.get_usage_percent(memory_usage), self.get_usage_percent(disk_usage)
+
+    def get_fan_speeds(self):
+        """Return CPU and first two case-fan PWM readings as percentages."""
+        case_duty = self.expansion.get_fan_duty()
+        if isinstance(case_duty, (list, tuple)):
+            case_duties = list(case_duty[:2])
+        else:
+            case_duties = [case_duty]
+        duties = [self.system_info.get_raspberry_pi_fan_duty()] + case_duties
+        return [duty / 255.0 * 100 for duty in duties]
     
     def render_screen(self, screen_name, snapshot):
         """Render the active OLED screen from a prepared snapshot."""
@@ -320,18 +330,18 @@ class VictronOLEDTask:
         
         if len(fan_speeds) >= 3:
             fan_layout = [
-                ("F1", fan_speeds[0], ((0, 4), (42, 60)), (21, 28)),
-                ("F2", fan_speeds[1], ((43, 4), (85, 60)), (64, 28)),
-                ("F3", fan_speeds[2], ((86, 4), (128, 60)), (107, 28)),
+                ("CPU", fan_speeds[0], ((0, 4), (42, 60)), (21, 28)),
+                ("F1", fan_speeds[1], ((43, 4), (85, 60)), (64, 28)),
+                ("F2", fan_speeds[2], ((86, 4), (128, 60)), (107, 28)),
             ]
         elif len(fan_speeds) >= 2:
             fan_layout = [
-                ("F1", fan_speeds[0], ((0, 4), (64, 60)), (32, 28)),
-                ("F2", fan_speeds[1], ((64, 4), (128, 60)), (96, 28)),
+                ("CPU", fan_speeds[0], ((0, 4), (64, 60)), (32, 28)),
+                ("F1", fan_speeds[1], ((64, 4), (128, 60)), (96, 28)),
             ]
         elif fan_speeds:
             fan_layout = [
-                ("F1", fan_speeds[0], ((0, 4), (128, 60)), (64, 28)),
+                ("CPU", fan_speeds[0], ((0, 4), (128, 60)), (64, 28)),
             ]
         else:
             self.oled.draw_text("No fan data", position=((0, 26), (128, 40)), directory="center", offset=(0, 0), font_size=12)
@@ -463,8 +473,7 @@ class VictronOLEDTask:
                 disk_usage = self.system_info.get_raspberry_pi_disk_usage()
                 cpu_temp = self.system_info.get_raspberry_pi_cpu_temperature()
                 case_temp = self.expansion.get_temp()
-                fan_duty = self.expansion.get_fan_duty()
-                fan_speeds = [d / 255.0 * 100 for d in (fan_duty if isinstance(fan_duty, list) else [fan_duty])]
+                fan_speeds = self.get_fan_speeds()
                 memory_percent, disk_percent = self.normalize_usage_values(memory_usage, disk_usage)
                 current_str = self.victron.format_current(current)
                 rem_str = self.victron.format_ttg(ttg)

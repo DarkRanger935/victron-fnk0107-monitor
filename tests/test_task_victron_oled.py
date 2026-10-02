@@ -20,6 +20,7 @@ api_json_stub.ConfigManager = object
 sys.modules.setdefault("api_json", api_json_stub)
 
 from task_victron_oled import VictronOLEDTask
+from task_manager import TaskManager
 
 
 class VictronOLEDTaskHelperTests(unittest.TestCase):
@@ -48,6 +49,76 @@ class VictronOLEDTaskHelperTests(unittest.TestCase):
         for voltage in (None, "invalid", float("nan"), float("inf")):
             with self.subTest(voltage=voltage):
                 self.assertEqual(task.check_voltage_alert(voltage), (False, False))
+
+    def test_fan_speeds_use_cpu_pwm_and_two_case_pwm_channels(self):
+        task = self.make_task()
+        task.system_info = Mock()
+        task.system_info.get_raspberry_pi_fan_duty.return_value = 64
+        task.expansion = Mock()
+        task.expansion.get_fan_duty.return_value = [128, 192, 255]
+
+        fan_speeds = task.get_fan_speeds()
+
+        self.assertAlmostEqual(fan_speeds[0], 64 / 255 * 100)
+        self.assertAlmostEqual(fan_speeds[1], 128 / 255 * 100)
+        self.assertAlmostEqual(fan_speeds[2], 192 / 255 * 100)
+        task.system_info.get_raspberry_pi_fan_duty.assert_called_once_with()
+        task.expansion.get_fan_duty.assert_called_once_with()
+
+    def test_fan_screen_labels_cpu_and_case_channels(self):
+        task = self.make_task()
+        task.oled = Mock()
+
+        task.oled_ui_fan_speeds([25, 50, 75])
+
+        labels = [call.args[0] for call in task.oled.draw_text.call_args_list]
+        self.assertEqual(labels, ["CPU", "25%", "F1", "50%", "F2", "75%"])
+
+    def test_task_manager_reads_missing_capacity_then_writes_it_once(self):
+        manager = TaskManager.__new__(TaskManager)
+        manager.config_manager = Mock()
+        manager.config_manager.get_section.return_value = {"port": "/dev/victron"}
+        monitor = Mock()
+        monitor.connect.return_value = True
+        monitor.read_battery_capacity.return_value = 300
+        monitor.serial_conn = Mock(is_open=True)
+
+        with patch("task_manager.api_victron.VictronMonitor", return_value=monitor):
+            manager.sync_battery_capacity()
+
+        monitor.read_battery_capacity.assert_called_once_with()
+        manager.config_manager.set_value.assert_called_once_with("Victron", "battery_capacity_ah", 300)
+        manager.config_manager.save_config.assert_called_once_with()
+        monitor.write_battery_capacity.assert_called_once_with(300)
+        monitor.serial_conn.close.assert_called_once_with()
+
+    def test_task_manager_writes_configured_capacity_without_reading(self):
+        manager = TaskManager.__new__(TaskManager)
+        manager.config_manager = Mock()
+        manager.config_manager.get_section.return_value = {"battery_capacity_ah": 450}
+        monitor = Mock()
+        monitor.connect.return_value = True
+        monitor.serial_conn = Mock(is_open=True)
+
+        with patch("task_manager.api_victron.VictronMonitor", return_value=monitor):
+            manager.sync_battery_capacity()
+
+        monitor.read_battery_capacity.assert_not_called()
+        monitor.write_battery_capacity.assert_called_once_with(450)
+        manager.config_manager.set_value.assert_not_called()
+        manager.config_manager.save_config.assert_not_called()
+
+    def test_task_manager_syncs_capacity_once_during_startup(self):
+        with (
+            patch("task_manager.ConfigManager"),
+            patch("task_manager.Expansion"),
+            patch("task_manager.atexit.register"),
+            patch("task_manager.signal.signal"),
+            patch.object(TaskManager, "sync_battery_capacity") as sync_capacity,
+        ):
+            TaskManager()
+
+        sync_capacity.assert_called_once_with()
 
     def test_critical_numeric_voltage_triggers_shutdown(self):
         task = self.make_task()

@@ -1,8 +1,8 @@
-# v0.1.0 Testing Instructions
+# v0.1.0-beta Testing Instructions
 
 ## ⚠️ IMPORTANT: Testing Phase
 
-Thank you for being part of the v0.1.0 validation phase! This release needs real-world hardware testing on your Raspberry Pi 5 + FNK0107 case + Victron shunt setup.
+Thank you for being part of the v0.1.0-beta validation phase! This beta needs real-world hardware testing on your Raspberry Pi 5 + FNK0107 case + Victron shunt setup.
 
 ## Prerequisites
 
@@ -269,7 +269,7 @@ Please create a GitHub issue with the following:
 ### Test Report Template
 
 ```markdown
-## v0.1.0 Test Report
+## v0.1.0-beta Test Report
 
 **Hardware:**
 - [ ] Raspberry Pi 5 (64-bit Bookworm)
@@ -382,4 +382,4 @@ Once testing is complete and all issues are resolved:
 
 ---
 
-**Thank you for testing v0.1.0! Your feedback is critical to making this project production-ready.** 🎉
+**Thank you for testing v0.1.0-beta! Your feedback is critical to making this project production-ready.** 🎉

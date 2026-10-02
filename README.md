@@ -339,7 +339,7 @@ Issues, feature requests, and pull requests welcome!
 
 ## ⚡ Status
 
-**✅ RELEASE v0.1.0 - Available Now**
+**🧪 BETA RELEASE v0.1.0-beta - Available for Testing**
 
 ### What's Included
 - ✅ Victron VE.Direct integration
@@ -357,7 +357,7 @@ Issues, feature requests, and pull requests welcome!
 - [Troubleshooting](#-troubleshooting)
 
 ### Roadmap
-- [x] v0.1.0 - Core Victron integration (✅ Released)
+- [x] v0.1.0-beta - Core Victron integration (🧪 Beta)
 - [ ] v0.2.0 - Web dashboard
 - [ ] v0.3.0 - Data logging & history
 - [ ] v0.4.0 - Mobile app integration
@@ -368,5 +368,5 @@ Issues, feature requests, and pull requests welcome!
 **Questions?** Open an issue or check the [Wiki](https://github.com/DarkRanger935/victron-fnk0107-monitor/wiki)
 
 **Release Date**: 2026-09-26  
-**Current Version**: v0.1.0  
+**Current Version**: v0.1.0-beta
 **Repository**: [DarkRanger935/victron-fnk0107-monitor](https://github.com/DarkRanger935/victron-fnk0107-monitor)

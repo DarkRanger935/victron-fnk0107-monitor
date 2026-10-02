@@ -8,6 +8,7 @@ import serial
 import time
 import sys
 import threading
+import math
 
 class VictronMonitor:
     def __init__(self, port='/dev/ttyUSB0', baudrate=19200, timeout=1):
@@ -24,7 +25,7 @@ class VictronMonitor:
         self.timeout = timeout
         self.serial_conn = None
         self.data = {
-            'voltage': 0.0,      # Volts
+            'voltage': None,     # Volts
             'current': 0.0,      # Amps (positive = charging, negative = discharging)
             'soc': 0,            # State of Charge %
             'ttg': 0,            # Time remaining from VE.Direct TTG (minutes)
@@ -69,7 +70,8 @@ class VictronMonitor:
             with self.lock:
                 if key == 'V':
                     # Voltage in mV, convert to V
-                    self.data['voltage'] = float(value) / 1000.0
+                    voltage = float(value) / 1000.0
+                    self.data['voltage'] = voltage if math.isfinite(voltage) else None
                 elif key == 'I':
                     # Current in mA, convert to A
                     current_ma = float(value)
@@ -88,8 +90,10 @@ class VictronMonitor:
                     # Time to go in minutes (-1 = N/A)
                     ttg = int(value)
                     self.data['ttg'] = ttg if ttg > 0 else 0
-        except (ValueError, IndexError) as e:
-            pass  # Skip malformed lines
+        except (ValueError, IndexError):
+            if key == 'V':
+                with self.lock:
+                    self.data['voltage'] = None
     
     def read_loop(self):
         """

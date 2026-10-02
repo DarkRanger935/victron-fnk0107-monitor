@@ -7,6 +7,15 @@ class VictronMonitorFormattingTests(unittest.TestCase):
     def setUp(self):
         self.monitor = VictronMonitor()
 
+    def test_voltage_is_unavailable_until_a_valid_read(self):
+        self.assertIsNone(self.monitor.get_voltage())
+        self.monitor.parse_ve_direct_frame("V\t13200")
+        self.assertEqual(self.monitor.get_voltage(), 13.2)
+
+    def test_malformed_voltage_is_unavailable(self):
+        self.monitor.parse_ve_direct_frame("V\tnot-a-number")
+        self.assertIsNone(self.monitor.get_voltage())
+
     def test_format_ttg_handles_zero(self):
         self.assertEqual(self.monitor.format_ttg(0), "N/A")
 

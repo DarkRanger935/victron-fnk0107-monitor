@@ -51,8 +51,21 @@ class VictronOLEDTask:
         oled_config = self.config_manager.get_section('OLED') or {}
         
         self.victron_port = self.config_manager.get_value('Victron', 'port') or '/dev/ttyUSB0'
-        self.low_voltage_threshold = self.config_manager.get_value('Victron', 'low_voltage_threshold') or 12.8
-        self.critical_voltage_threshold = self.config_manager.get_value('Victron', 'critical_voltage_threshold') or 12.7
+
+        default_low_voltage_threshold = 12.8
+        default_critical_voltage_threshold = 12.7
+
+        low_voltage_threshold = self.config_manager.get_value('Victron', 'low_voltage_threshold')
+        if low_voltage_threshold is None:
+            print(f"Warning: 'low_voltage_threshold' not found in config, using default: {default_low_voltage_threshold}V")
+            low_voltage_threshold = default_low_voltage_threshold
+        self.low_voltage_threshold = low_voltage_threshold
+
+        critical_voltage_threshold = self.config_manager.get_value('Victron', 'critical_voltage_threshold')
+        if critical_voltage_threshold is None:
+            print(f"Warning: 'critical_voltage_threshold' not found in config, using default: {default_critical_voltage_threshold}V")
+            critical_voltage_threshold = default_critical_voltage_threshold
+        self.critical_voltage_threshold = critical_voltage_threshold
         self.normal_led_color = (
             self.config_manager.get_value('LED', 'red_value') or 0,
             self.config_manager.get_value('LED', 'green_value') or 6,

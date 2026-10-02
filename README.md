@@ -1,13 +1,15 @@
 # Victron FNK0107 Power Monitor
 
-A comprehensive power monitoring system for Raspberry Pi 5 that seamlessly integrates Victron battery monitoring with FNK0107 case control, OLED display, and ARGB LED indicators.
+A power monitoring system for Raspberry Pi 5 that seamlessly integrates Victron battery monitoring (Smart shunt 300A) with FNK0107 case control, OLED display, and ARGB LED indicators.  PI Statistics that are available on the Freenove FNK107 case software are complimented with key power statistics from the Smart shunt, based on the assumption the monitored battery is the one powering the raspberry PI.  Note that the Time Remaining and State-of-Charge (SOC) come straight from the Smart shunt, which factors in the Discharge Floor configured in the shunt.  This service, however, only actively evaluates the battery voltage against the voltage thresholds in the configuration JSON file.  if the voltage falls below the warning threshold, the OLED display will show a low-voltage warning, and will flash the case OLED lights at full brightness with an alternating red and blue pattern.  if the voltage falls below the configured Critical threshold, an "imminent shutdown" alert will briefly display on the case OLED display, then a safe, orderly shutdown of the PI 5 will occur.
+Note that if the load on the power system is reduced (which will raise the system voltage and remaining battery life), then the warning on the OLED display and ARGB case lights will clear and return to their configured normal states.  However, if a critical voltage threshold is crossed, the imminent shutdown is "baked-in", the power monitoring will cease, and the shutdown will occur regardless of any subsequent improvement in voltage.
 
 ## 🎯 Features
 
 ### Victron Monitoring
-- **Real-time power metrics**: Voltage, current (amps), charge/discharge direction
+- **Real-time power metrics**: Voltage, current (amps), Power (Watts), charge/discharge direction.  Direction is displayed as either an 'up' arrow (charging) or 'down'arrow (discharging.)
 - **Battery state**: State of Charge (SOC), Victron-reported time remaining
-- **VE.Direct serial communication**: Reliable data acquisition from Victron 300A shunt monitor
+- **VE.Direct serial communication**: Reliable data acquisition from Victron 300A shunt monitor, using a .VEdirect-to-USB cable.
+- Planned Feature: ability to change certain configuration parameters (total battery capacity in AH, Discharge Floor) for the SmartShunt or enable/disable Bluetooth simply via an edit of the service configuration JSON and restarting the service; do not attempt to use it at this time, as the register locations needed for the 300A SmartShunt have yet to be confirmed by Victron.  this feature will be very handy to minimise power losses from Bluetooth if the SmartShunt and .VEdirect cable are packed into a densely-wired case that you don't want to have to open regularly.
 
 ### System Display
 - **Date / Time Screen**
@@ -17,12 +19,12 @@ A comprehensive power monitoring system for Raspberry Pi 5 that seamlessly integ
 - **Victron Screen**: Power header, voltage, current, SOC, and time remaining
 
 ### Intelligent Alerts
-- **Low Voltage Alert** (≤12.8V)
+- **Low Voltage Alert** (≤12.8V default)
   - OLED displays alert overlay
   - ARGB LEDs flash alternating red (255,0,0) and blue (0,0,255) every second
-  - Persists until voltage recovers above 12.8V
+  - Persists until voltage recovers above configured warning level (12.8v default).
 
-- **Critical Shutdown** (<12.7V)
+- **Critical Shutdown** (<12.7V default)
   - Automatic graceful system shutdown
   - Prevents data corruption
 

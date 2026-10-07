@@ -301,9 +301,10 @@ class VictronOLEDTask:
             print(f"[ATAK] Unable to start alert socket: {error}")
 
     def _listen_for_atak_alerts(self):
+        server = self.alert_server
         while not self.alert_server_stop.is_set():
             try:
-                connection, _ = self.alert_server.accept()
+                connection, _ = server.accept()
             except socket.timeout:
                 continue
             except OSError:

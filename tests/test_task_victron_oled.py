@@ -43,23 +43,32 @@ class VictronOLEDTaskHelperTests(unittest.TestCase):
     def test_atak_payload_activates_and_clears_emergency_state(self):
         task = self.make_task()
         task.atak_alert_lock = threading.Lock()
+        task.atak_alerts = {}
         task.atak_alert_active = False
         task.atak_alert_text = ""
         task.atak_scroll_index = 0
 
         self.assertTrue(task.handle_atak_payload("false|MEDICAL|Unit 7|12S UD 12345 67890\n"))
+        self.assertTrue(task.handle_atak_payload("false|CASEVAC|Unit 8|12S UD 11111 22222"))
         self.assertEqual(
             task.get_atak_alert_state(),
-            (True, "MEDICAL | Unit 7 | 12S UD 12345 67890"),
+            (True, "CASEVAC | Unit 8 | 12S UD 11111 22222"),
         )
 
         self.assertTrue(task.handle_atak_payload("true|MEDICAL CLEARED|Unit 7|12S UD 12345 67890"))
+        self.assertEqual(
+            task.get_atak_alert_state(),
+            (True, "CASEVAC | Unit 8 | 12S UD 11111 22222"),
+        )
+
+        self.assertTrue(task.handle_atak_payload("true|CASEVAC CLEARED|Unit 8|12S UD 11111 22222"))
         self.assertEqual(task.get_atak_alert_state(), (False, ""))
         self.assertFalse(task.handle_atak_payload("invalid|MEDICAL|Unit 7|coordinates"))
 
     def test_atak_socket_server_receives_payload_and_cleans_up(self):
         task = self.make_task()
         task.atak_alert_lock = threading.Lock()
+        task.atak_alerts = {}
         task.atak_alert_active = False
         task.atak_alert_text = ""
         task.atak_scroll_index = 0

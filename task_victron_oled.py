@@ -52,6 +52,7 @@ class VictronOLEDTask:
         self.system_screens = ("date_time", "utilization", "fans", "temperatures")
         self.screen_sequence = self.system_screens + ("victron",)
         self.atak_alert_lock = threading.Lock()
+        self.atak_alerts = {}
         self.atak_alert_active = False
         self.atak_alert_text = ""
         self.atak_scroll_index = 0
@@ -342,19 +343,24 @@ class VictronOLEDTask:
         )
 
         with self.atak_alert_lock:
+            previous_alert_text = self.atak_alert_text
             if is_cleared:
-                self.atak_alert_active = False
-                self.atak_alert_text = ""
-                self.atak_scroll_index = 0
+                self.atak_alerts.pop(callsign, None)
             else:
                 alert_text = (
                     f"{alert_type or 'EMERGENCY ALERT'} | "
                     f"{callsign or 'UNKNOWN'} | {mgrs_position or 'UNKNOWN COORD'}"
                 )[:512]
-                if not self.atak_alert_active or self.atak_alert_text != alert_text:
-                    self.atak_scroll_index = 0
-                self.atak_alert_active = True
-                self.atak_alert_text = alert_text
+                self.atak_alerts[callsign] = alert_text
+
+            self.atak_alert_active = bool(self.atak_alerts)
+            self.atak_alert_text = (
+                next(reversed(self.atak_alerts.values()), "")
+                if self.atak_alert_active
+                else ""
+            )
+            if self.atak_alert_text != previous_alert_text:
+                self.atak_scroll_index = 0
 
         print("[ATAK] Emergency alert cleared" if is_cleared else "[ATAK] Emergency alert received")
         return True

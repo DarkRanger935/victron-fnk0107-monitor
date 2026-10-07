@@ -24,6 +24,13 @@ Note that if the load on the power system is reduced (which will raise the syste
   - ARGB LEDs flash alternating red (255,0,0) and blue (0,0,255) every second
   - Persists until voltage recovers above configured warning level (12.8v default).
 
+- **ATAK Emergency Alert** (optional)
+  - Receives emergency and CASEVAC details from a local ATAK monitor over a Unix-domain socket
+  - Overrides the normal OLED rotation with a scrolling alert marquee
+  - Flashes the ARGB LEDs red and green until ATAK reports the emergency cleared
+  - Restores normal monitoring screens and LED follow mode after the clear message
+  - Audio alerts are not supported by the current FNK0107 expansion-board API
+
 - **Critical Shutdown** (<12.7V default)
   - Automatic graceful system shutdown
   - Prevents data corruption
@@ -44,12 +51,12 @@ Note that if the load on the power system is reduced (which will raise the syste
 
 ### System Packages (Bookworm)
 ```bash
-python3-serial
-python3-pil
-python3-psutil
-python3-smbus
-i2c-tools
+# Required Python packages are listed in requirements.txt
+sudo apt-get install -y $(grep -Ev '^(#|$)' requirements.txt | tr '\n' ' ')
 ```
+This installs the Python runtime libraries, including `python3-luma.core` and `python3-luma.oled`. The Python ATAK receiver uses only standard-library imports (`socket`, `threading`, and `stat`); it does not add a pip dependency. Its `api_*` imports are local modules in this repository and must remain on the Python import path.
+
+The optional Perl ATAK producer is included in `atak_monitor.pl`; its separate system dependencies are listed in [`requirements-atak.txt`](requirements-atak.txt). Install these only when deploying that producer.
 
 ## 🚀 Installation
 
@@ -141,6 +148,36 @@ sudo systemctl status victron-monitor.service
 sudo journalctl -u victron-monitor.service -f
 ```
 
+### Optional: Install ATAK Emergency Monitoring
+
+The Python receiver is included in `task_victron_oled.py`; the Perl producer and its systemd unit are included as `atak_monitor.pl` and `systemd/atak_monitor.service`.
+
+The producer connects to the TAK server using mutual TLS and sends alert payloads to `/run/victron-monitor/victron_alerts.sock`. Its defaults expect the TAK server at `127.0.0.1:8089` and certificates named `admin.pem`, `admin.key`, and `ca.pem` under the configured certificate directory. Edit the producer's server address and certificate directory to match your installation. Both services run as `pi`; the Victron monitor's systemd unit creates the shared runtime directory.
+
+Install the optional Perl modules:
+```bash
+cd ~/victron-fnk0107-monitor
+sudo apt-get update
+sudo apt-get install -y $(grep -Ev '^(#|$)' requirements-atak.txt | tr '\n' ' ')
+```
+The Perl producer uses `IO::Socket::SSL`, `XML::Simple`, and `Geo::Coordinates::MGRS`.
+
+Install the supplied producer and unit:
+```bash
+sudo install -m 0755 atak_monitor.pl /usr/local/bin/atak_monitor.pl
+sudo install -m 0644 systemd/atak_monitor.service /etc/systemd/system/atak_monitor.service
+```
+
+The service runs as `pi`. Grant that account read access to the required certificate files and traverse access to their parent directories; keep the private key restricted to the service account/group and do not make it world-readable. Then enable ATAK monitoring:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now atak_monitor.service
+sudo systemctl status atak_monitor.service
+sudo journalctl -u atak_monitor.service -f
+```
+
+Start `victron-monitor.service` as described above. Confirm both services use the same account, the socket path is available at startup, and the logs show the TLS connection and a listening ATAK socket. To test, send a test emergency from ATAK and verify the OLED marquee/LED pattern; clear the emergency and verify normal rotation and follow mode resume.
+
 ## 📁 Project Structure
 
 ```
@@ -148,6 +185,8 @@ victron-fnk0107-monitor/
 ├── README.md                      # This file
 ├── TESTING.md                     # Comprehensive testing guide
 ├── requirements.txt               # System packages (apt)
+├── requirements-atak.txt          # Optional Perl ATAK producer packages (apt)
+├── atak_monitor.pl                # Optional ATAK/TAK TLS producer
 ├── app_config.json               # Configuration file
 ├── api_victron.py                # Victron shunt communication
 ├── api_expansion.py              # FNK0107 case control (from Freenove)
@@ -159,7 +198,8 @@ victron-fnk0107-monitor/
 ├── task_fan.py                   # Fan control daemon
 ├── task_manager.py               # Task orchestration
 ├── systemd/
-│   └── victron-monitor.service   # Systemd service file
+│   ├── atak_monitor.service       # Optional ATAK producer service
+│   └── victron-monitor.service   # Systemd service
 └── data/
     └── app_config.json           # Runtime configuration
 ```
@@ -339,17 +379,14 @@ Issues, feature requests, and pull requests welcome!
 
 ## ⚡ Status
 
-**✅ RELEASE v0.1.0 - Available Now**
+## v1.1 Release Notes
 
-### What's Included
-- ✅ Victron VE.Direct integration
-- ✅ Real-time voltage, current, SOC monitoring
-- ✅ Low voltage alert system (≤12.8V)
-- ✅ Critical shutdown (≤12.7V)
-- ✅ OLED display with system stats (pie charts) and battery info
-- ✅ ARGB LED alert flashing (red/blue alternating)
-- ✅ Systemd service for auto-startup
-- ✅ Full configuration management
+- Added ATAK emergency/CASEVAC alert reception through a local Unix-domain socket.
+- Added OLED marquee and red/green ARGB LED override, returning to normal monitoring when cleared.
+- Included the Perl ATAK producer and systemd service; documented optional dependencies, mutual-TLS configuration, and certificate permissions.
+- Audio alerts are not available with the current expansion-board API.
+
+**Release status:** v1.1 producer and receiver assets are included; validate the integration on target hardware before publishing the release.
 
 ### Installation Quick Links
 - [Installation Guide](#-installation)
@@ -357,16 +394,16 @@ Issues, feature requests, and pull requests welcome!
 - [Troubleshooting](#-troubleshooting)
 
 ### Roadmap
-- [x] v0.1.0 - Core Victron integration (✅ Released)
-- [ ] v0.2.0 - Web dashboard
-- [ ] v0.3.0 - Data logging & history
-- [ ] v0.4.0 - Mobile app integration
-- [ ] v1.0.0 - Production stable release
+- [x] v1.0 - Core Victron monitoring (released)
+- [ ] v1.1 - ATAK emergency integration (hardware validation pending)
+- [ ] Web dashboard
+- [ ] Data logging & history
+- [ ] Mobile app integration
 
 ---
 
 **Questions?** Open an issue or check the [Wiki](https://github.com/DarkRanger935/victron-fnk0107-monitor/wiki)
 
-**Release Date**: 2026-09-26  
-**Current Version**: v0.1.0  
+**Current published version**: v1.0
+**Next documented version**: v1.1
 **Repository**: [DarkRanger935/victron-fnk0107-monitor](https://github.com/DarkRanger935/victron-fnk0107-monitor)

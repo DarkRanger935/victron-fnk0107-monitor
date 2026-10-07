@@ -11,7 +11,12 @@ import signal
 import subprocess
 import os
 import math
+import socket
+import stat
+import threading
 from datetime import datetime, timedelta
+
+ATAK_SOCKET_PATH = "/run/victron-monitor/victron_alerts.sock"
 
 try:
     from api_victron import VictronMonitor
@@ -46,6 +51,19 @@ class VictronOLEDTask:
         self.font_size = 12
         self.system_screens = ("date_time", "utilization", "fans", "temperatures")
         self.screen_sequence = self.system_screens + ("victron",)
+        self.atak_alert_lock = threading.Lock()
+        self.atak_alerts = {}
+        self.atak_alert_active = False
+        self.atak_alert_text = ""
+        self.atak_scroll_index = 0
+        self.atak_led_active = False
+        self.atak_led_toggle = False
+        self.atak_last_toggle = None
+        self.alert_socket_path = ATAK_SOCKET_PATH
+        self.alert_server = None
+        self.alert_server_thread = None
+        self.alert_server_stop = threading.Event()
+        self.alert_socket_bound = False
         
         # Load config
         victron_config = self.config_manager.get_value('Victron', 'port') or {}
@@ -119,6 +137,7 @@ class VictronOLEDTask:
         """Handle shutdown signals"""
         print("\nShutdown signal received")
         self.running = False
+        self.stop_alert_server()
         
         try:
             if self.victron:
@@ -172,10 +191,14 @@ class VictronOLEDTask:
         except (TypeError, ValueError, OverflowError):
             return False
     
-    def update_led_state(self, alert_active):
+    def update_led_state(self, alert_active, override_active=False):
         """
         Update LED color based on alert state
         """
+        if override_active:
+            self.alert_state = alert_active
+            return
+
         current_time = time.time()
         
         if alert_active:
@@ -233,6 +256,186 @@ class VictronOLEDTask:
         if self.last_led_color != color:
             self.expansion.set_all_led_color(*color)
             self.last_led_color = color
+
+    def start_alert_server(self):
+        """Start the non-blocking Unix-domain socket receiver for ATAK alerts."""
+        if self.alert_server_thread and self.alert_server_thread.is_alive():
+            return
+
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        socket_bound = False
+        try:
+            os.makedirs(os.path.dirname(self.alert_socket_path), exist_ok=True)
+            try:
+                existing_mode = os.lstat(self.alert_socket_path).st_mode
+            except FileNotFoundError:
+                pass
+            else:
+                if not stat.S_ISSOCK(existing_mode):
+                    raise OSError(f"Refusing to replace non-socket path: {self.alert_socket_path}")
+                os.unlink(self.alert_socket_path)
+
+            server.bind(self.alert_socket_path)
+            socket_bound = True
+            os.chmod(self.alert_socket_path, 0o660)
+            server.listen(5)
+            server.settimeout(0.5)
+            self.alert_server_stop.clear()
+            self.alert_server = server
+            self.alert_socket_bound = True
+            self.alert_server_thread = threading.Thread(
+                target=self._listen_for_atak_alerts,
+                daemon=True,
+            )
+            self.alert_server_thread.start()
+            print(f"[ATAK] Listening for alerts on {self.alert_socket_path}")
+        except OSError as error:
+            server.close()
+            if socket_bound and os.path.exists(self.alert_socket_path):
+                try:
+                    if stat.S_ISSOCK(os.lstat(self.alert_socket_path).st_mode):
+                        os.unlink(self.alert_socket_path)
+                except OSError:
+                    pass
+            self.alert_server = None
+            self.alert_socket_bound = False
+            print(f"[ATAK] Unable to start alert socket: {error}")
+
+    def _listen_for_atak_alerts(self):
+        server = self.alert_server
+        while not self.alert_server_stop.is_set():
+            try:
+                connection, _ = server.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                if not self.alert_server_stop.is_set():
+                    print("[ATAK] Alert socket stopped unexpectedly")
+                return
+
+            with connection:
+                connection.settimeout(1)
+                payload = bytearray()
+                try:
+                    while len(payload) < 4096:
+                        chunk = connection.recv(min(1024, 4096 - len(payload)))
+                        if not chunk:
+                            break
+                        payload.extend(chunk)
+                        if b"\n" in chunk:
+                            break
+                except (OSError, socket.timeout):
+                    continue
+
+            if payload:
+                self.handle_atak_payload(payload.decode("utf-8", errors="replace").strip())
+
+    def handle_atak_payload(self, payload):
+        """Apply a STATUS|TYPE|CALLSIGN|MGRS message from the ATAK service."""
+        parts = payload.split("|", 3)
+        if len(parts) != 4 or parts[0].strip().lower() not in ("true", "false"):
+            return False
+
+        is_cleared = parts[0].strip().lower() == "true"
+        alert_type, callsign, mgrs_position = (
+            value.strip().replace("\r", " ").replace("\n", " ")
+            for value in parts[1:]
+        )
+
+        with self.atak_alert_lock:
+            previous_alert_text = self.atak_alert_text
+            if is_cleared:
+                self.atak_alerts.pop(callsign, None)
+            else:
+                alert_text = (
+                    f"{alert_type or 'EMERGENCY ALERT'} | "
+                    f"{callsign or 'UNKNOWN'} | {mgrs_position or 'UNKNOWN COORD'}"
+                )[:512]
+                self.atak_alerts[callsign] = alert_text
+
+            self.atak_alert_active = bool(self.atak_alerts)
+            self.atak_alert_text = (
+                next(reversed(self.atak_alerts.values()), "")
+                if self.atak_alert_active
+                else ""
+            )
+            if self.atak_alert_text != previous_alert_text:
+                self.atak_scroll_index = 0
+
+        print("[ATAK] Emergency alert cleared" if is_cleared else "[ATAK] Emergency alert received")
+        return True
+
+    def get_atak_alert_state(self):
+        with self.atak_alert_lock:
+            return self.atak_alert_active, self.atak_alert_text
+
+    def stop_alert_server(self):
+        self.alert_server_stop.set()
+        server = self.alert_server
+        self.alert_server = None
+        if server:
+            server.close()
+
+        thread = self.alert_server_thread
+        self.alert_server_thread = None
+        if thread and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout=1)
+
+        if self.alert_socket_bound:
+            try:
+                if stat.S_ISSOCK(os.lstat(self.alert_socket_path).st_mode):
+                    os.unlink(self.alert_socket_path)
+            except (FileNotFoundError, OSError):
+                pass
+            self.alert_socket_bound = False
+
+    def update_atak_led_state(self, alert_active):
+        """Flash the case LEDs during ATAK emergencies and restore normal mode on clear."""
+        if not alert_active:
+            if self.atak_led_active:
+                self.atak_led_active = False
+                self.atak_last_toggle = None
+                if not self.alert_state:
+                    self.restore_normal_led_state()
+            return
+
+        current_time = time.time()
+        if not self.atak_led_active:
+            self.atak_led_active = True
+            self.atak_led_toggle = True
+            self.atak_last_toggle = current_time
+        elif current_time - self.atak_last_toggle >= 0.3:
+            self.atak_led_toggle = not self.atak_led_toggle
+            self.atak_last_toggle = current_time
+
+        color = (255, 0, 0) if self.atak_led_toggle else (0, 255, 0)
+        self._set_led_state(self.static_led_mode, color)
+
+    def render_atak_alert(self, alert_text):
+        """Render one scrolling ATAK emergency frame without blocking the monitor loop."""
+        scrolling_text = f"   {alert_text}   "
+        start = self.atak_scroll_index % len(scrolling_text)
+        repeated_text = scrolling_text * 2
+        visible_text = repeated_text[start:start + 16]
+
+        self.oled.clear()
+        self.oled.draw_text(
+            "ATAK EMERGENCY",
+            position=((0, 7), (128, 24)),
+            directory="center",
+            offset=(0, 0),
+            font_size=13,
+        )
+        self.oled.draw_text(
+            visible_text,
+            position=((0, 27), (128, 48)),
+            directory="left",
+            offset=(0, 0),
+            font_size=14,
+        )
+        self.oled.draw_line(((0, 51), (128, 51)), fill="white")
+        self.oled.show()
+        self.atak_scroll_index = (start + 1) % len(scrolling_text)
     
     def format_power_header(self, voltage, current):
         """Format power for the Victron screen."""
@@ -477,9 +680,11 @@ class VictronOLEDTask:
         print(f"Low voltage threshold: {self.low_voltage_threshold}V")
         print(f"Critical voltage threshold: {self.critical_voltage_threshold}V")
         
+        self.start_alert_server()
         screen_start_time = time.time()
         current_screen_index = 0
         previous_alert_active = False
+        previous_atak_alert_active = False
         
         while self.running:
             try:
@@ -491,13 +696,14 @@ class VictronOLEDTask:
                 
                 # Check voltage
                 alert_active, should_shutdown = self.check_voltage_alert(voltage)
+                atak_alert_active, atak_alert_text = self.get_atak_alert_state()
                 
                 if should_shutdown:
                     self.graceful_shutdown()
                     break
                 
                 # Update LED state
-                self.update_led_state(alert_active)
+                self.update_led_state(alert_active, override_active=atak_alert_active)
                 
                 # Get system info
                 date_str = self.system_info.get_raspberry_pi_date()
@@ -537,12 +743,24 @@ class VictronOLEDTask:
                 current_screen = self.screen_sequence[current_screen_index]
                 screen_duration = self.get_screen_duration(current_screen)
                 
-                if alert_active:
-                    # Display alert instead of normal screens
+                if atak_alert_active:
+                    if not previous_atak_alert_active:
+                        screen_start_time = time.time()
+                    self.update_atak_led_state(True)
+                    self.render_atak_alert(atak_alert_text)
+                elif alert_active:
+                    if previous_atak_alert_active:
+                        self.update_atak_led_state(False)
+                        screen_start_time = time.time()
+                    # Display low-voltage alert instead of normal screens
                     if not previous_alert_active:
                         screen_start_time = time.time()
                     self.oled_ui_low_voltage_alert(voltage)
                 else:
+                    if previous_atak_alert_active:
+                        self.update_atak_led_state(False)
+                        screen_start_time = time.time()
+                        elapsed = 0
                     if previous_alert_active:
                         screen_start_time = time.time()
                         elapsed = 0
@@ -553,7 +771,8 @@ class VictronOLEDTask:
                         screen_start_time = time.time()
                     
                     self.render_screen(current_screen, screen_snapshot)
-                
+
+                previous_atak_alert_active = atak_alert_active
                 previous_alert_active = alert_active
                 
                 time.sleep(0.3)

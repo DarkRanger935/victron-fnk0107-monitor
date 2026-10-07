@@ -1,6 +1,11 @@
 import unittest
 import types
 import sys
+import os
+import socket
+import tempfile
+import threading
+import time
 from unittest.mock import Mock, patch
 
 api_expansion_stub = types.ModuleType("api_expansion")
@@ -34,6 +39,99 @@ class VictronOLEDTaskHelperTests(unittest.TestCase):
     def test_normalize_usage_values_handles_empty_sequences(self):
         task = self.make_task()
         self.assertEqual(task.normalize_usage_values([], ()), (0, 0))
+
+    def test_atak_payload_activates_and_clears_emergency_state(self):
+        task = self.make_task()
+        task.atak_alert_lock = threading.Lock()
+        task.atak_alerts = {}
+        task.atak_alert_active = False
+        task.atak_alert_text = ""
+        task.atak_scroll_index = 0
+
+        self.assertTrue(task.handle_atak_payload("false|MEDICAL|Unit 7|12S UD 12345 67890\n"))
+        self.assertTrue(task.handle_atak_payload("false|CASEVAC|Unit 8|12S UD 11111 22222"))
+        self.assertEqual(
+            task.get_atak_alert_state(),
+            (True, "CASEVAC | Unit 8 | 12S UD 11111 22222"),
+        )
+
+        self.assertTrue(task.handle_atak_payload("true|MEDICAL CLEARED|Unit 7|12S UD 12345 67890"))
+        self.assertEqual(
+            task.get_atak_alert_state(),
+            (True, "CASEVAC | Unit 8 | 12S UD 11111 22222"),
+        )
+
+        self.assertTrue(task.handle_atak_payload("true|CASEVAC CLEARED|Unit 8|12S UD 11111 22222"))
+        self.assertEqual(task.get_atak_alert_state(), (False, ""))
+        self.assertFalse(task.handle_atak_payload("invalid|MEDICAL|Unit 7|coordinates"))
+
+    def test_atak_socket_server_receives_payload_and_cleans_up(self):
+        task = self.make_task()
+        task.atak_alert_lock = threading.Lock()
+        task.atak_alerts = {}
+        task.atak_alert_active = False
+        task.atak_alert_text = ""
+        task.atak_scroll_index = 0
+        task.alert_socket_path = os.path.join(tempfile.gettempdir(), f"victron-alerts-{os.getpid()}.sock")
+        task.alert_server = None
+        task.alert_server_thread = None
+        task.alert_server_stop = threading.Event()
+        task.alert_socket_bound = False
+
+        try:
+            task.start_alert_server()
+            client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            client.connect(task.alert_socket_path)
+            client.sendall(b"false|CASEVAC|Unit 8|12S UD 11111 22222\n")
+            client.close()
+
+            deadline = time.time() + 1
+            while not task.get_atak_alert_state()[0] and time.time() < deadline:
+                time.sleep(0.01)
+
+            self.assertEqual(
+                task.get_atak_alert_state(),
+                (True, "CASEVAC | Unit 8 | 12S UD 11111 22222"),
+            )
+        finally:
+            task.stop_alert_server()
+
+        self.assertFalse(os.path.exists(task.alert_socket_path))
+
+    def test_atak_marquee_and_led_override_restore_normal_mode(self):
+        task = self.make_task()
+        task.oled = Mock()
+        task.atak_scroll_index = 0
+
+        task.render_atak_alert("MEDICAL | Unit 7 | MGRS")
+
+        self.assertEqual(task.oled.draw_text.call_args_list[0].args[0], "ATAK EMERGENCY")
+        self.assertEqual(task.oled.draw_text.call_args_list[1].args[0], "   MEDICAL | Uni")
+        task.oled.show.assert_called_once_with()
+
+        task.expansion = Mock()
+        task.last_led_mode = None
+        task.last_led_color = None
+        task.static_led_mode = 1
+        task.normal_led_mode = 2
+        task.atak_led_active = False
+        task.atak_led_toggle = False
+        task.atak_last_toggle = None
+        task.alert_state = False
+        task.follow_led_color_primed = True
+        task.last_follow_led_color = (0, 6, 6)
+        task.normal_led_color = (0, 6, 6)
+
+        with patch("task_victron_oled.time.time", side_effect=(10, 10.31)):
+            task.update_atak_led_state(True)
+            task.update_atak_led_state(True)
+            task.update_atak_led_state(False)
+
+        self.assertEqual(
+            task.expansion.set_all_led_color.call_args_list,
+            [unittest.mock.call(255, 0, 0), unittest.mock.call(0, 255, 0)],
+        )
+        self.assertIn(unittest.mock.call(2), task.expansion.set_led_mode.call_args_list[1:])
 
     def test_format_power_header_and_direction_use_two_decimals(self):
         task = self.make_task()

@@ -2,7 +2,7 @@
 
 ## ⚠️ IMPORTANT: Testing Phase
 
-Test on a Raspberry Pi 5 with the FNK0107 case and Victron shunt before deploying. The optional ATAK integration additionally requires its Perl producer and systemd unit, TAK server access, and valid mutual-TLS certificates.
+Test on a Raspberry Pi 5 with the FNK0107 case and Victron shunt before deploying. The optional ATAK integration additionally requires installing the included Perl producer dependencies, TAK server access, and valid mutual-TLS certificates.
 
 ## Prerequisites
 
@@ -205,9 +205,9 @@ To simulate low voltage without disrupting your actual battery:
 
 ### Phase 2A: ATAK Alert Receiver (optional)
 
-**Prerequisites:** Install the separately supplied `atak_monitor.pl` and `atak_monitor.service` assets as described in the [README](README.md#optional-install-atak-emergency-monitoring), install `requirements-atak.txt`, and configure the TAK server endpoint and certificate paths. Both services must use the same account; the configured socket path expects UID 1000.
+**Prerequisites:** Install `requirements-atak.txt`, configure the TAK server endpoint and certificate paths in `atak_monitor.pl`, and install both systemd units as described in the [README](README.md#optional-install-atak-emergency-monitoring). Both services run as `pi`.
 
-1. Start the Victron monitor and confirm its logs report that it is listening on `/run/user/1000/victron_alerts.sock`.
+1. Start the Victron monitor and confirm its logs report that it is listening on `/run/victron-monitor/victron_alerts.sock`.
 2. Start the ATAK producer and confirm its logs show a successful TLS connection.
 3. Send a test emergency and confirm the OLED shows scrolling incident details and the LEDs flash red/green.
 4. Clear the emergency and confirm the marquee ends and normal screen rotation/LED follow mode resume.

@@ -56,7 +56,7 @@ sudo apt-get install -y $(grep -Ev '^(#|$)' requirements.txt | tr '\n' ' ')
 ```
 This installs the Python runtime libraries, including `python3-luma.core` and `python3-luma.oled`. The Python ATAK receiver uses only standard-library imports (`socket`, `threading`, and `stat`); it does not add a pip dependency. Its `api_*` imports are local modules in this repository and must remain on the Python import path.
 
-The optional Perl ATAK producer has separate system dependencies listed in [`requirements-atak.txt`](requirements-atak.txt). Install these only when deploying that producer.
+The optional Perl ATAK producer is included in `atak_monitor.pl`; its separate system dependencies are listed in [`requirements-atak.txt`](requirements-atak.txt). Install these only when deploying that producer.
 
 ## 🚀 Installation
 
@@ -150,9 +150,9 @@ sudo journalctl -u victron-monitor.service -f
 
 ### Optional: Install ATAK Emergency Monitoring
 
-The Python receiver is included in `task_victron_oled.py`. The separate Perl producer (`atak_monitor.pl`) and its systemd unit (`atak_monitor.service`) must also be supplied by your ATAK deployment; they are not currently included in this repository. Do not enable ATAK monitoring until those two files are available.
+The Python receiver is included in `task_victron_oled.py`; the Perl producer and its systemd unit are included as `atak_monitor.pl` and `systemd/atak_monitor.service`.
 
-The producer connects to the TAK server using mutual TLS and sends alert payloads to `/run/user/1000/victron_alerts.sock`. Its defaults expect the TAK server at `127.0.0.1:8089` and certificates named `admin.pem`, `admin.key`, and `ca.pem` under the configured certificate directory. Edit the producer's server address and certificate directory to match your installation. The producer and Victron monitor must run as the same account, and that account must have UID `1000` for the configured socket path.
+The producer connects to the TAK server using mutual TLS and sends alert payloads to `/run/victron-monitor/victron_alerts.sock`. Its defaults expect the TAK server at `127.0.0.1:8089` and certificates named `admin.pem`, `admin.key`, and `ca.pem` under the configured certificate directory. Edit the producer's server address and certificate directory to match your installation. Both services run as `pi`; the Victron monitor's systemd unit creates the shared runtime directory.
 
 Install the optional Perl modules:
 ```bash
@@ -160,12 +160,12 @@ cd ~/victron-fnk0107-monitor
 sudo apt-get update
 sudo apt-get install -y $(grep -Ev '^(#|$)' requirements-atak.txt | tr '\n' ' ')
 ```
-The Perl producer uses `IO::Socket::SSL`, `XML::Simple`, and `Geo::Coordinates::MGRS`; its source must load these modules explicitly.
+The Perl producer uses `IO::Socket::SSL`, `XML::Simple`, and `Geo::Coordinates::MGRS`.
 
 Install the supplied producer and unit:
 ```bash
 sudo install -m 0755 atak_monitor.pl /usr/local/bin/atak_monitor.pl
-sudo install -m 0644 atak_monitor.service /etc/systemd/system/atak_monitor.service
+sudo install -m 0644 systemd/atak_monitor.service /etc/systemd/system/atak_monitor.service
 ```
 
 The service runs as `pi`. Grant that account read access to the required certificate files and traverse access to their parent directories; keep the private key restricted to the service account/group and do not make it world-readable. Then enable ATAK monitoring:
@@ -186,6 +186,7 @@ victron-fnk0107-monitor/
 ├── TESTING.md                     # Comprehensive testing guide
 ├── requirements.txt               # System packages (apt)
 ├── requirements-atak.txt          # Optional Perl ATAK producer packages (apt)
+├── atak_monitor.pl                # Optional ATAK/TAK TLS producer
 ├── app_config.json               # Configuration file
 ├── api_victron.py                # Victron shunt communication
 ├── api_expansion.py              # FNK0107 case control (from Freenove)
@@ -197,7 +198,8 @@ victron-fnk0107-monitor/
 ├── task_fan.py                   # Fan control daemon
 ├── task_manager.py               # Task orchestration
 ├── systemd/
-│   └── victron-monitor.service   # Systemd service file
+│   ├── atak_monitor.service       # Optional ATAK producer service
+│   └── victron-monitor.service   # Systemd service
 └── data/
     └── app_config.json           # Runtime configuration
 ```
@@ -381,10 +383,10 @@ Issues, feature requests, and pull requests welcome!
 
 - Added ATAK emergency/CASEVAC alert reception through a local Unix-domain socket.
 - Added OLED marquee and red/green ARGB LED override, returning to normal monitoring when cleared.
-- Documented optional Perl producer dependencies, mutual-TLS configuration, certificate permissions, and systemd setup.
+- Included the Perl ATAK producer and systemd service; documented optional dependencies, mutual-TLS configuration, and certificate permissions.
 - Audio alerts are not available with the current expansion-board API.
 
-**Release status:** Documentation prepared for v1.1; publish the GitHub release/tag after the required ATAK producer and systemd unit are included in the distribution.
+**Release status:** v1.1 producer and receiver assets are included; validate the integration on target hardware before publishing the release.
 
 ### Installation Quick Links
 - [Installation Guide](#-installation)
@@ -393,7 +395,7 @@ Issues, feature requests, and pull requests welcome!
 
 ### Roadmap
 - [x] v1.0 - Core Victron monitoring (released)
-- [ ] v1.1 - ATAK emergency integration (release assets pending)
+- [ ] v1.1 - ATAK emergency integration (hardware validation pending)
 - [ ] Web dashboard
 - [ ] Data logging & history
 - [ ] Mobile app integration

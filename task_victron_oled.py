@@ -16,7 +16,7 @@ import stat
 import threading
 from datetime import datetime, timedelta
 
-ATAK_SOCKET_PATH = "/run/user/1000/victron_alerts.sock"
+ATAK_SOCKET_PATH = "/run/victron-monitor/victron_alerts.sock"
 
 try:
     from api_victron import VictronMonitor

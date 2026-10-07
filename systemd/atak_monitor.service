@@ -1,0 +1,15 @@
+[Unit]
+Description=ATAK TLS Emergency Monitor
+After=network.target victron-monitor.service
+
+[Service]
+Type=simple
+User=pi
+ExecStart=/usr/local/bin/atak_monitor.pl
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

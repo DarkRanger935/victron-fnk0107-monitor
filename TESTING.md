@@ -1,8 +1,8 @@
-# v0.1.0 Testing Instructions
+# v1.1 Testing Instructions
 
 ## ⚠️ IMPORTANT: Testing Phase
 
-Thank you for being part of the v0.1.0 validation phase! This release needs real-world hardware testing on your Raspberry Pi 5 + FNK0107 case + Victron shunt setup.
+Test on a Raspberry Pi 5 with the FNK0107 case and Victron shunt before deploying. The optional ATAK integration additionally requires its Perl producer and systemd unit, TAK server access, and valid mutual-TLS certificates.
 
 ## Prerequisites
 
@@ -56,7 +56,12 @@ export PYTHONPATH="$HOME/victron-fnk0107-monitor:$PYTHONPATH"
 
 # Quick import preflight
 python3 -c "import api_expansion, api_oled, api_victron, api_systemInfo; print('✓ Local api_* imports OK')"
+
+# Run the repository's automated tests
+python3 -m unittest discover -s tests -v
 ```
+
+The ATAK receiver adds no Python package dependencies: `socket`, `threading`, and `stat` are from the standard library. The `api_*` imports resolve to modules in this repository. Optional Perl producer dependencies are listed in `requirements-atak.txt`.
 
 ## Testing Phases
 
@@ -198,6 +203,21 @@ To simulate low voltage without disrupting your actual battery:
 - Skip this test to avoid unexpected shutdown
 - Confirm shutdown logic in code review instead
 
+### Phase 2A: ATAK Alert Receiver (optional)
+
+**Prerequisites:** Install the separately supplied `atak_monitor.pl` and `atak_monitor.service` assets as described in the [README](README.md#optional-install-atak-emergency-monitoring), install `requirements-atak.txt`, and configure the TAK server endpoint and certificate paths. Both services must use the same account; the configured socket path expects UID 1000.
+
+1. Start the Victron monitor and confirm its logs report that it is listening on `/run/user/1000/victron_alerts.sock`.
+2. Start the ATAK producer and confirm its logs show a successful TLS connection.
+3. Send a test emergency and confirm the OLED shows scrolling incident details and the LEDs flash red/green.
+4. Clear the emergency and confirm the marquee ends and normal screen rotation/LED follow mode resume.
+5. Review both services' logs for socket, permissions, or certificate errors:
+
+```bash
+sudo journalctl -u victron-monitor.service -n 50
+sudo journalctl -u atak_monitor.service -n 50
+```
+
 ### Phase 3: Service Installation (15 min)
 
 **Goal**: Install as systemd service and verify auto-startup.
@@ -269,7 +289,7 @@ Please create a GitHub issue with the following:
 ### Test Report Template
 
 ```markdown
-## v0.1.0 Test Report
+## v1.1 Test Report
 
 **Hardware:**
 - [ ] Raspberry Pi 5 (64-bit Bookworm)
@@ -382,4 +402,4 @@ Once testing is complete and all issues are resolved:
 
 ---
 
-**Thank you for testing v0.1.0! Your feedback is critical to making this project production-ready.** 🎉
+**Thank you for testing v1.1! Your feedback is critical to making this project production-ready.** 🎉

@@ -347,12 +347,14 @@ class VictronOLEDTask:
                 self.atak_alert_text = ""
                 self.atak_scroll_index = 0
             else:
-                self.atak_alert_active = True
-                self.atak_alert_text = (
+                alert_text = (
                     f"{alert_type or 'EMERGENCY ALERT'} | "
                     f"{callsign or 'UNKNOWN'} | {mgrs_position or 'UNKNOWN COORD'}"
                 )[:512]
-                self.atak_scroll_index = 0
+                if not self.atak_alert_active or self.atak_alert_text != alert_text:
+                    self.atak_scroll_index = 0
+                self.atak_alert_active = True
+                self.atak_alert_text = alert_text
 
         print("[ATAK] Emergency alert cleared" if is_cleared else "[ATAK] Emergency alert received")
         return True

@@ -225,7 +225,10 @@ class VictronOLEDTask:
     
     def initialize_normal_led_state(self):
         """Prime the board with the configured follow color, then hand off to follow mode."""
-        force_priming = not self.follow_led_color_primed
+        force_priming = (
+            not self.follow_led_color_primed
+            or self.last_led_color != self.normal_led_color
+        )
         self._ensure_led_mode(self.static_led_mode)
         if force_priming or self.last_follow_led_color != self.normal_led_color:
             self.expansion.set_all_led_color(*self.normal_led_color)
@@ -236,7 +239,11 @@ class VictronOLEDTask:
     
     def restore_normal_led_state(self):
         """Restore follow mode without replaying the full-strip color flash."""
-        if not self.follow_led_color_primed or self.last_follow_led_color != self.normal_led_color:
+        if (
+            not self.follow_led_color_primed
+            or self.last_follow_led_color != self.normal_led_color
+            or self.last_led_color != self.normal_led_color
+        ):
             self.initialize_normal_led_state()
             return
         self._ensure_led_mode(self.normal_led_mode)

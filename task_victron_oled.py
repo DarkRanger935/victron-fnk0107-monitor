@@ -16,7 +16,7 @@ import stat
 import threading
 from datetime import datetime, timedelta
 
-ATAK_SOCKET_PATH = "/run/victron-monitor/victron_alerts.sock"
+ATAK_SOCKET_PATH = "/dev/shm/victron_alerts.sock"
 
 try:
     from api_victron import VictronMonitor
@@ -265,7 +265,7 @@ class VictronOLEDTask:
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         socket_bound = False
         try:
-            os.makedirs(os.path.dirname(self.alert_socket_path), exist_ok=True)
+            #os.makedirs(os.path.dirname(self.alert_socket_path), exist_ok=True)
             try:
                 existing_mode = os.lstat(self.alert_socket_path).st_mode
             except FileNotFoundError:

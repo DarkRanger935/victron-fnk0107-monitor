@@ -1,3 +1,4 @@
 libio-socket-ssl-perl
 libxml-simple-perl
-libgeo-coordinates-mgrs-perl
+libgeo-coordinates-utm-perl
+libxml-simple-perl

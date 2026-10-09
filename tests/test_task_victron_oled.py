@@ -40,6 +40,21 @@ class VictronOLEDTaskHelperTests(unittest.TestCase):
         task = self.make_task()
         self.assertEqual(task.normalize_usage_values([], ()), (0, 0))
 
+    def test_configured_alert_colors_use_defaults_and_preserve_zero_channels(self):
+        task = self.make_task()
+        task.config_manager = Mock()
+        task.config_manager.get_section.return_value = {
+            "alternating_colour_1": {"red_value": 0, "green_value": 10},
+            "alternating_colour_2": {"blue_value": 0},
+        }
+
+        colors = task.get_configured_led_colors(
+            "LED Victron Voltage Alert Colours",
+            ((255, 0, 0), (0, 0, 255)),
+        )
+
+        self.assertEqual(colors, ((0, 10, 0), (0, 0, 0)))
+
     def test_atak_payload_activates_and_clears_emergency_state(self):
         task = self.make_task()
         task.atak_alert_lock = threading.Lock()
@@ -121,6 +136,7 @@ class VictronOLEDTaskHelperTests(unittest.TestCase):
         task.follow_led_color_primed = True
         task.last_follow_led_color = (0, 6, 6)
         task.normal_led_color = (0, 6, 6)
+        task.atak_alert_colors = ((255, 0, 0), (0, 255, 0))
 
         with patch("task_victron_oled.time.time", side_effect=(10, 10.31)):
             task.update_atak_led_state(True)
@@ -129,7 +145,11 @@ class VictronOLEDTaskHelperTests(unittest.TestCase):
 
         self.assertEqual(
             task.expansion.set_all_led_color.call_args_list,
-            [unittest.mock.call(255, 0, 0), unittest.mock.call(0, 255, 0)],
+            [
+                unittest.mock.call(255, 0, 0),
+                unittest.mock.call(0, 255, 0),
+                unittest.mock.call(0, 6, 6),
+            ],
         )
         self.assertIn(unittest.mock.call(2), task.expansion.set_led_mode.call_args_list[1:])
 

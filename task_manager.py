@@ -38,7 +38,7 @@ class TaskManager:
         self.monitoring = False
         self.shutting_down = False
         self.expansion = Expansion()
-        led_config = self.config_manager.get_section('LED')
+        led_config = self.get_led_config()
         fan_config = self.config_manager.get_section('Fan')
         led_config = led_config if isinstance(led_config, dict) else {}
         fan_config = fan_config if isinstance(fan_config, dict) else {}
@@ -79,6 +79,13 @@ class TaskManager:
         finally:
             if monitor.serial_conn and monitor.serial_conn.is_open:
                 monitor.serial_conn.close()
+
+    def get_led_config(self):
+        """Read the renamed LED section, falling back to configs created by older versions."""
+        return (
+            self.config_manager.get_section('LED Normal state')
+            or self.config_manager.get_section('LED')
+        )
 
     def send_led_mode_to_expansion(self, led_mode):
         """Send LED mode to expansion board"""
@@ -161,7 +168,7 @@ class TaskManager:
         self.config_manager.load_config()
         
         # Get task configs for each module
-        led_config = self.config_manager.get_section('LED')
+        led_config = self.get_led_config()
         fan_config = self.config_manager.get_section('Fan')
         oled_config = self.config_manager.get_section('OLED')
         
@@ -201,7 +208,7 @@ class TaskManager:
         self.config_manager.load_config()
         
         # Get task configs for each module
-        led_config = self.config_manager.get_section('LED')
+        led_config = self.get_led_config()
         fan_config = self.config_manager.get_section('Fan')
         oled_config = self.config_manager.get_section('OLED')
         
@@ -237,7 +244,7 @@ class TaskManager:
         self.config_manager.load_config()
         
         # Get task configs for each module
-        led_config = self.config_manager.get_section('LED')
+        led_config = self.get_led_config()
         fan_config = self.config_manager.get_section('Fan')
         oled_config = self.config_manager.get_section('OLED')
         
@@ -407,7 +414,7 @@ class TaskManager:
             self.stop_task(task_path)
 
         self.config_manager.load_config()
-        led_config = self.config_manager.get_section('LED')
+        led_config = self.get_led_config()
         fan_config = self.config_manager.get_section('Fan')
         led_config = led_config if isinstance(led_config, dict) else {}
         fan_config = fan_config if isinstance(fan_config, dict) else {}
@@ -433,9 +440,14 @@ class TaskManager:
         self.config_manager.load_config()
         
         # Check LED config
-        led_config = self.config_manager.get_section('LED')
+        led_config = self.get_led_config()
         if led_config and led_config.get('task_name') == task_path:
-            self.config_manager.set_value('LED', 'is_run_on_startup', is_run_on_startup)
+            led_section = (
+                'LED Normal state'
+                if self.config_manager.get_section('LED Normal state')
+                else 'LED'
+            )
+            self.config_manager.set_value(led_section, 'is_run_on_startup', is_run_on_startup)
             config_updated = True
         
         # Check Fan config

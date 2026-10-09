@@ -3,13 +3,37 @@
     "screen_orientation": 0,
     "follow_led_color": 0
   },
-  "LED": {
+  "LED Normal state": {
     "mode": 2,
     "red_value": 0,
     "green_value": 6,
     "blue_value": 6,
     "task_name": "task_led.py",
     "is_run_on_startup": true
+  },
+  "LED Victron Voltage Alert Colours": {
+    "alternating_colour_1": {
+      "red_value": 255,
+      "green_value": 0,
+      "blue_value": 0
+    },
+    "alternating_colour_2": {
+      "red_value": 0,
+      "green_value": 0,
+      "blue_value": 255
+    }
+  },
+  "LED Atak Alert Colours": {
+    "alternating_colour_1": {
+      "red_value": 255,
+      "green_value": 0,
+      "blue_value": 0
+    },
+    "alternating_colour_2": {
+      "red_value": 0,
+      "green_value": 255,
+      "blue_value": 0
+    }
   },
   "Fan": {
     "mode": 0,

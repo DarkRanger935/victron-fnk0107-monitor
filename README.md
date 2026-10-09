@@ -151,7 +151,7 @@ sudo journalctl -u victron-monitor.service -f
 
 The Python receiver is included in `task_victron_oled.py`; the Perl producer and its systemd unit are included as `atak_monitor.pl` and `systemd/atak_monitor.service`.
 
-The producer connects to the TAK server using mutual TLS and sends alert payloads to `/run/victron-monitor/victron_alerts.sock`. Its defaults expect the TAK server at `127.0.0.1:8089` and certificates named `admin.pem`, `admin.key`, and `ca.pem` under the configured certificate directory. Edit the producer's server address and certificate directory to match your installation. Both services run as `pi`; the Victron monitor's systemd unit creates the shared runtime directory.
+The producer connects to the TAK server using mutual TLS and sends alert payloads to `/run/victron-monitor/victron_alerts.sock`. Its defaults expect the TAK server at `takserver:8089` and certificates named `admin.pem`, `admin.key`, and `ca.pem` under the configured certificate directory. Edit the producer's server hostname or address (whichever is accepted when connecting to the atak admin console) and certificate directory to match your installation. Both services run as `pi`; the Victron monitor's systemd unit creates the shared runtime directory (in memory).
 
 Install the optional Perl modules:
 ```bash
@@ -159,7 +159,7 @@ cd ~/victron-fnk0107-monitor
 sudo apt-get update
 sudo apt-get install -y $(grep -Ev '^(#|$)' requirements-atak.txt | tr '\n' ' ')
 ```
-The Perl producer uses `IO::Socket::SSL`, `XML::Simple`, and `Geo::Coordinates::MGRS`.
+The Perl producer uses `IO::Socket::SSL`, `XML::Simple`, and `Geo::Coordinates::UTM` for conversion of lat/long to MGRS.
 
 Install the supplied producer and unit:
 ```bash

@@ -85,10 +85,22 @@ class VictronOLEDTask:
             print(f"Warning: 'critical_voltage_threshold' not found in config, using default: {default_critical_voltage_threshold}V")
             critical_voltage_threshold = default_critical_voltage_threshold
         self.critical_voltage_threshold = critical_voltage_threshold
-        self.normal_led_color = (
-            self.config_manager.get_value('LED', 'red_value') or 0,
-            self.config_manager.get_value('LED', 'green_value') or 6,
-            self.config_manager.get_value('LED', 'blue_value') or 6,
+        led_config = self.config_manager.get_section('LED Normal state') or self.config_manager.get_section('LED')
+        self.normal_led_color = tuple(
+            led_config.get(channel, default)
+            for channel, default in (
+                ('red_value', 0),
+                ('green_value', 6),
+                ('blue_value', 6),
+            )
+        )
+        self.victron_alert_colors = self.get_configured_led_colors(
+            'LED Victron Voltage Alert Colours',
+            ((255, 0, 0), (0, 0, 255)),
+        )
+        self.atak_alert_colors = self.get_configured_led_colors(
+            'LED Atak Alert Colours',
+            ((255, 0, 0), (0, 255, 0)),
         )
         
         self.screen_durations = self.get_configured_screen_durations(oled_config)
@@ -190,6 +202,19 @@ class VictronOLEDTask:
             return math.isfinite(float(voltage))
         except (TypeError, ValueError, OverflowError):
             return False
+
+    def get_configured_led_colors(self, section, defaults):
+        """Load a pair of configured alternating RGB colours with per-channel defaults."""
+        section_config = self.config_manager.get_section(section) or {}
+        channels = ('red_value', 'green_value', 'blue_value')
+        colors = []
+        for index, default_color in enumerate(defaults, start=1):
+            configured_color = section_config.get(f'alternating_colour_{index}', {})
+            colors.append(tuple(
+                configured_color.get(channel, default)
+                for channel, default in zip(channels, default_color)
+            ))
+        return tuple(colors)
     
     def update_led_state(self, alert_active, override_active=False):
         """
@@ -214,10 +239,8 @@ class VictronOLEDTask:
                 self.alert_color_toggle = not self.alert_color_toggle
                 self.last_alert_toggle = current_time
             
-            if self.alert_color_toggle:
-                self._set_led_state(1, (255, 0, 0))  # Red
-            else:
-                self._set_led_state(1, (0, 0, 255))  # Blue
+            color_index = 0 if self.alert_color_toggle else 1
+            self._set_led_state(1, self.victron_alert_colors[color_index])
         else:
             if self.alert_state:
                 self.alert_state = False
@@ -415,7 +438,8 @@ class VictronOLEDTask:
             self.atak_led_toggle = not self.atak_led_toggle
             self.atak_last_toggle = current_time
 
-        color = (255, 0, 0) if self.atak_led_toggle else (0, 255, 0)
+        color_index = 0 if self.atak_led_toggle else 1
+        color = self.atak_alert_colors[color_index]
         self._set_led_state(self.static_led_mode, color)
 
     def render_atak_alert(self, alert_text):

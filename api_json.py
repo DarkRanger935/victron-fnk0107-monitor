@@ -244,13 +244,37 @@ class ConfigManager:
                     "screen_orientation": 0,
                     "follow_led_color": 0
                 },
-                "LED": {
+                "LED Normal state": {
                     "mode": led_mode_default,
                     "red_value": 0,
-                    "green_value": 0,
-                    "blue_value": 255,
+                    "green_value": 6,
+                    "blue_value": 6,
                     "task_name": "task_led.py",
                     "is_run_on_startup": True
+                },
+                "LED Victron Voltage Alert Colours": {
+                    "alternating_colour_1": {
+                        "red_value": 255,
+                        "green_value": 0,
+                        "blue_value": 0
+                    },
+                    "alternating_colour_2": {
+                        "red_value": 0,
+                        "green_value": 0,
+                        "blue_value": 255
+                    }
+                },
+                "LED Atak Alert Colours": {
+                    "alternating_colour_1": {
+                        "red_value": 255,
+                        "green_value": 0,
+                        "blue_value": 0
+                    },
+                    "alternating_colour_2": {
+                        "red_value": 0,
+                        "green_value": 255,
+                        "blue_value": 0
+                    }
                 },
                 "Fan": {
                     "mode": fan_mode_default,
@@ -361,7 +385,7 @@ if __name__ == '__main__':
     print(f"All config: {all_config}")
 
     # Read configuration value
-    led_mode = config_manager.get_value('LED', 'mode')
+    led_mode = config_manager.get_value('LED Normal state', 'mode')
     print(f"LED Mode: {led_mode}")
 
     # Get entire configuration section
@@ -369,8 +393,8 @@ if __name__ == '__main__':
     print(f"FAN config: {fan_config}")
 
     # # Modify configuration value
-    # config_manager.set_value('LED', 'mode', 1)
-    # config_manager.set_value('LED', 'red_value', 255)
+    # config_manager.set_value('LED Normal state', 'mode', 1)
+    # config_manager.set_value('LED Normal state', 'red_value', 255)
 
     # # Save modified configuration
     # config_manager.save_config()
@@ -380,8 +404,8 @@ if __name__ == '__main__':
     # print(f"Updated config: {updated_config}")
 
     # # Modify configuration value
-    # config_manager.set_value('LED', 'mode', 2)
-    # config_manager.set_value('LED', 'red_value', 0)
+    # config_manager.set_value('LED Normal state', 'mode', 2)
+    # config_manager.set_value('LED Normal state', 'red_value', 0)
 
     # # Save modified configuration
     # config_manager.save_config()

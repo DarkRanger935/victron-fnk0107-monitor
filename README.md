@@ -1,7 +1,7 @@
 # Victron FNK0107 Power & Atak Monitor
 
-A very resource-efficient power and Atak monitoring system for Raspberry Pi 5 that  integrates Victron battery monitoring (Smart shunt 300A) and Atak emergency alerts with FNK0107 case control, OLED display, and ARGB LED indicators.  This repo incorporates the relevant Freenove libraries to provide all described features, no additional software from Freenove need be installed.  PI Statistics that are available are complimented with key power statistics from the Smart shunt, based on the assumption the monitored battery is the one powering the raspberry PI.  Note that the Time Remaining and State-of-Charge (SOC) come straight from the Smart shunt, which factors in the Discharge Floor configured in the shunt.  This service, however, only actively evaluates the battery voltage against the voltage thresholds in the configuration JSON file.  if the voltage falls below the warning threshold, the OLED display will show a low-voltage warning, and will flash the case OLED lights at full brightness with an alternating red and blue pattern.  if the voltage falls below the configured Critical threshold, an "imminent shutdown" alert will briefly display on the case OLED display, then a safe, orderly shutdown of the PI 5 will occur.
-Note that if the load on the power system is reduced (which will raise the system voltage and remaining battery life), then the warning on the OLED display and ARGB case lights will clear and return to their configured normal states.  However, if a critical voltage threshold is crossed, the imminent shutdown is "baked-in", the power monitoring will cease, and the shutdown will occur regardless of any subsequent improvement in voltage. Emergency Alerts from Atak (such as CasEvac or In Contact) will also flash the case red and green, and display relevant details on the OLED display, and clear if the alert is removed in Atak.
+A very resource-efficient power and Atak monitoring system for Raspberry Pi 5 that  integrates Victron battery monitoring (Smart shunt 300A) and Atak emergency alerts with FNK0107 case control, OLED display, and ARGB LED indicators.  This repo incorporates the relevant Freenove & Victron libraries to provide all described features, no additional software from Freenove need be installed.  Atak Emergency monitoring tested and validated with a standard docker install of Atak-civ version 5.6 (the installation of which is outside the scope of this document, see documentation on tak.gov for that). PI Statistics that are available are complimented with key power statistics from the Smart shunt, based on the assumption the monitored battery is the one powering the raspberry PI.  Note that the Time Remaining and State-of-Charge (SOC) come straight from the Smart shunt, which factors in the Discharge Floor configured in the shunt.  This service, however, only actively evaluates the battery voltage against the voltage thresholds in the configuration JSON file.  if the voltage falls below the warning threshold, the OLED display will show a low-voltage warning, and will flash the case OLED lights at full brightness with an alternating pattern (red and blue by default).  if the voltage falls below the configured Critical threshold, an "imminent shutdown" alert will briefly display on the case OLED display, then a safe, orderly shutdown of the PI 5 will occur.
+Note that if the load on the power system is reduced (which will raise the system voltage and remaining battery life), then the warning on the OLED display and ARGB case lights will clear and return to their configured normal states.  However, if a critical voltage threshold is crossed, the imminent shutdown is "baked-in", the power monitoring will cease, and the shutdown will occur regardless of any subsequent improvement in voltage. Emergency Alerts from Atak (such as CasEvac or In Contact) will also flash the case ARGB lights (red and green by default), and display relevant details on the OLED display, and clear if the alert is removed in Atak.  ARGB colour and animation patterns are all fully configurable in the JSON file.
 
 ## 🎯 Features
 
@@ -10,6 +10,8 @@ Note that if the load on the power system is reduced (which will raise the syste
 - **Battery state**: State of Charge (SOC), Victron-reported time remaining
 - **VE.Direct serial communication**: Reliable data acquisition from Victron 300A shunt monitor, using a .VEdirect-to-USB cable.
 - Planned Feature: ability to change certain configuration parameters (total battery capacity in AH, Discharge Floor) for the SmartShunt or enable/disable Bluetooth simply via an edit of the service configuration JSON and restarting the service; do not attempt to use it at this time, as the register locations needed for the 300A SmartShunt have yet to be confirmed by Victron.  this feature will be very handy to minimise power losses from Bluetooth if the SmartShunt and .VEdirect cable are packed into a densely-wired case that you don't want to have to open regularly.
+### Atak Emergency Alert Monitoring
+- **Real-time power Atak Emergency Alert monitoring**: The OLED display will show the type of alert, the call sign of the sender, and their MGRS coordinates for all Atak Emergency alerts until they are cleared in Atak.
 
 ### System Display
 - **Date / Time Screen**
@@ -313,7 +315,8 @@ sudo journalctl -u victron-monitor.service -n 50
 ```
 
 ### High CPU Usage
-- Reduce polling frequency in `app_config.json`
+- Should not be a factor, resource utilization was too small to measure during testing, even on a heavily-loaded Pi 5 8gb.  however, if you are having issues, consider utizing hardware QoS to prioritize software access to CPU and memory on your Pi, rather than making changes below (out of scope here, but the author has found this extremely effective to nullify/prevent resource issues 
+- if deemed necessary, Reduce polling frequency in `app_config.json`
 - Check for stuck threads in logs
 
 ## ⚙️ Advanced Configuration
@@ -346,9 +349,10 @@ Edit `app_config.json`:
 }
 ```
 
-### LED Modes
+### LED Modes (defaults)
 - **Normal**: Follow mode cyan (0, 6, 6)
-- **Alert**: Flashing red/blue
+- **Voltage Alert**: Flashing red/blue
+- **Atak Emergency Alert**: Flashing red/green
 - **Critical**: Off
 
 ## 🔐 Security Notes
@@ -368,7 +372,7 @@ Custom integration and Victron monitoring code: MIT License
 
 ## 🤝 Contributing
 
-Issues, feature requests, and pull requests welcome!
+Your contributions are welcome!
 
 ## 📚 References
 
@@ -380,12 +384,12 @@ Issues, feature requests, and pull requests welcome!
 
 ## v1.1 Release Notes
 
-- Added ATAK emergency/CASEVAC alert reception through a local Unix-domain socket.
-- Added OLED marquee and red/green ARGB LED override, returning to normal monitoring when cleared.
+- Added ATAK emergency alert reception through a local Unix-domain socket.  The OLED display will show the type of alert, the call sign of the sender, and their MGRS coordinates for all Atak Emergency alerts until they are cleared in Atak.  Although this has only been tested on Atak-Civ 5.6, it should also work on the full military version of Atak 5.6.
+- Added OLED marquee and red/green ARGB LED override, returning to normal monitoring when cleared.  All LED colours and patterns for the various states are configurable in the JSON file.
 - Included the Perl ATAK producer and systemd service; documented optional dependencies, mutual-TLS configuration, and certificate permissions.
-- Audio alerts are not available with the current expansion-board API.
+- Audio alerts using the audio capabilities of the Freenove case may be added later.
 
-**Release status:** v1.1 producer and receiver assets are included; validate the integration on target hardware before publishing the release.
+**Release status:** v1.1 producer and receiver assets are included.
 
 ### Installation Quick Links
 - [Installation Guide](#-installation)

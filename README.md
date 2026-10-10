@@ -169,7 +169,20 @@ sudo install -m 0755 atak_monitor.pl /usr/local/bin/atak_monitor.pl
 sudo install -m 0644 systemd/atak_monitor.service /etc/systemd/system/atak_monitor.service
 ```
 
-The service runs as `pi`. Grant that account read access to the required certificate files and traverse access to their parent directories; keep the private key restricted to the service account/group and do not make it world-readable. Then enable ATAK monitoring:
+The service runs as `pi`. Grant that account read access to the required certificate files and traverse access to their parent directories; keep the private key restricted to the service account/group and do not make it world-readable: 
+
+#create dedicated group for atak cert access
+sudo groupadd takcerts
+#assign your service user to the group:
+sudo usermod -aG takcerts pi
+#update folder permissions to allow group full access:
+sudo chown -R :takcerts /TAKSERVER/takserver-docker-5.6-RELEASE-57/tak/certs/files
+sudo chmod 750 /TAKSERVER/takserver-docker-5.6-RELEASE-57/tak/certs/files
+sudo chmod 640 /TAKSERVER/takserver-docker-5.6-RELEASE-57/tak/certs/files/*
+#apply group to current user (if same account as service uses; if not, reboot to log it out and back  in):
+newgrp takcerts
+
+Then enable ATAK monitoring:
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now atak_monitor.service
@@ -223,7 +236,6 @@ Messages parsed:
 ## 🎨 Display Modes
 
 ### LED Behavior
-
 **Normal Operation**
 - Color: Cyan (0, 6, 6) in Follow Mode
 - Indicates healthy system operation

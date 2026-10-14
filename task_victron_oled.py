@@ -644,7 +644,7 @@ class VictronOLEDTask:
     def oled_ui_power_graph(self, item, history):
         """Display a line graph of the selected item over the 5 minute window."""
         self.oled.clear()
-        title = self.GRAPH_ITEMS.get(item, item)
+        title = "5-Minute Data " + self.GRAPH_ITEMS.get(item, item)
         self.oled.draw_text(title, position=((0, 0), (128, 8)), directory="center", offset=(0, -1), font_size=8)
         top, bottom = 9, 63
         values = [v for _, v in history]

@@ -9,8 +9,12 @@ import time
 import sys
 import threading
 import math
+from collections import deque
 
 class VictronMonitor:
+    HISTORY_WINDOW_SECONDS = 300
+    HISTORY_SAMPLE_INTERVAL = 1.0
+
     def __init__(self, port='/dev/ttyUSB0', baudrate=19200, timeout=1):
         """
         Initialize Victron monitor
@@ -31,6 +35,8 @@ class VictronMonitor:
             'ttg': 0,            # Time remaining from VE.Direct TTG (minutes)
             'direction': 'idle'  # 'charging' or 'discharging'
         }
+        self.history = deque()
+        self.last_history_sample = 0
         self.lock = threading.Lock()
         self.running = False
         self.last_update = 0
@@ -197,6 +203,7 @@ class VictronMonitor:
                         if buffer:
                             self.parse_ve_direct_frame(buffer)
                             self.last_update = time.time()
+                            self.record_sample()
                         buffer = ""
                     elif byte == '\r':
                         # Carriage return, ignore
@@ -226,6 +233,38 @@ class VictronMonitor:
             self.serial_conn.close()
         print("Victron connection closed")
     
+    def record_sample(self, now=None):
+        """
+        Record a sample into the in-memory moving window (5 minutes),
+        at most once per HISTORY_SAMPLE_INTERVAL seconds.
+        """
+        now = time.time() if now is None else now
+        with self.lock:
+            voltage = self.data['voltage']
+            if voltage is None or now - self.last_history_sample < self.HISTORY_SAMPLE_INTERVAL:
+                return False
+            current = self.data['current']
+            self.history.append((now, {
+                'watts': abs(voltage * current),
+                'voltage': voltage,
+                'current': current,
+                'soc': self.data['soc'],
+            }))
+            self.last_history_sample = now
+            cutoff = now - self.HISTORY_WINDOW_SECONDS
+            while self.history and self.history[0][0] < cutoff:
+                self.history.popleft()
+            return True
+
+    def get_history(self, item='watts', now=None):
+        """
+        Return [(timestamp, value)] for the selected item within the window.
+        """
+        now = time.time() if now is None else now
+        cutoff = now - self.HISTORY_WINDOW_SECONDS
+        with self.lock:
+            return [(t, v[item]) for t, v in self.history if t >= cutoff and item in v]
+
     def get_data(self):
         """
         Get current Victron data (thread-safe)

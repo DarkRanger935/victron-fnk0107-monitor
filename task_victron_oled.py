@@ -30,6 +30,12 @@ except ImportError as e:
 
 
 class VictronOLEDTask:
+    GRAPH_ITEMS = {
+        'watts': 'Watts (W)',
+        'voltage': 'Voltage (V)',
+        'current': 'Current (A)',
+        'soc': 'SOC (%)',
+    }
     
     def __init__(self):
         self.running = True
@@ -50,7 +56,7 @@ class VictronOLEDTask:
         self.normal_led_mode = 2
         self.font_size = 12
         self.system_screens = ("date_time", "utilization", "fans", "temperatures")
-        self.screen_sequence = self.system_screens + ("victron",)
+        self.screen_sequence = self.system_screens + ("victron", "power_graph")
         self.atak_alert_lock = threading.Lock()
         self.atak_alerts = {}
         self.atak_alert_active = False
@@ -103,6 +109,11 @@ class VictronOLEDTask:
             ((255, 0, 0), (0, 255, 0)),
         )
         
+        self.graph_item = str(oled_config.get('power_graph_item', 'watts')).lower()
+        if self.graph_item not in self.GRAPH_ITEMS:
+            print(f"Warning: unknown power_graph_item '{self.graph_item}', using 'watts'")
+            self.graph_item = 'watts'
+
         self.screen_durations = self.get_configured_screen_durations(oled_config)
         
         try:
@@ -544,6 +555,8 @@ class VictronOLEDTask:
             self.oled_ui_fan_speeds(snapshot["fan_speeds"])
         elif screen_name == "temperatures":
             self.oled_ui_temperatures(snapshot["cpu_temp"], snapshot["case_temp"])
+        elif screen_name == "power_graph":
+            self.oled_ui_power_graph(self.graph_item, snapshot.get("history", []))
         else:
             self.oled_ui_victron_stats(
                 snapshot["power_text"],
@@ -628,6 +641,46 @@ class VictronOLEDTask:
         
         self.oled.show()
     
+    def oled_ui_power_graph(self, item, history):
+        """Display a line graph of the selected item over the 5 minute window."""
+        self.oled.clear()
+        title = self.GRAPH_ITEMS.get(item, item)
+        self.oled.draw_text(title, position=((0, 0), (128, 8)), directory="center", offset=(0, -1), font_size=8)
+        top, bottom = 9, 63
+        values = [v for _, v in history]
+        if len(values) < 2:
+            self.oled.draw_text("No data", position=((0, 28), (128, 44)), directory="center", font_size=10)
+            self.oled.show()
+            return
+        lo, hi = min(values), max(values)
+        if hi - lo < 1e-9:
+            lo, hi = lo - 0.5, hi + 0.5
+        max_text, min_text = self._format_scale(max(values)), self._format_scale(min(values))
+        label_w = max(len(max_text), len(min_text)) * 4 + 1
+        left, right = 0, 127 - label_w
+        self.oled.draw_text(max_text, position=((0, top - 1), (128, top + 7)), directory="right", font_size=7)
+        self.oled.draw_text(min_text, position=((0, bottom - 8), (128, bottom)), directory="right", font_size=7)
+        self.oled.draw_line(((left, top), (left, bottom)), fill="white")
+        self.oled.draw_line(((left, bottom), (right, bottom)), fill="white")
+        now = history[-1][0]
+        window = float(getattr(self.victron, "HISTORY_WINDOW_SECONDS", 300))
+        points = []
+        for t, v in history:
+            x = right - int((now - t) / window * (right - left))
+            y = bottom - int((v - lo) / (hi - lo) * (bottom - top))
+            points.append((max(left, x), y))
+        for a, b in zip(points, points[1:]):
+            self.oled.draw_line((a, b), fill="white")
+        self.oled.show()
+
+    @staticmethod
+    def _format_scale(value):
+        if abs(value) >= 100:
+            return f"{value:.0f}"
+        if abs(value) >= 10:
+            return f"{value:.1f}"
+        return f"{value:.2f}"
+
     def oled_ui_victron_stats(self, power_text, voltage, current_str, soc, rem_str, direction_arrow="→"):
         """
         Display Victron battery statistics
@@ -767,6 +820,7 @@ class VictronOLEDTask:
                     "current_str": current_str,
                     "soc": soc,
                     "rem_str": rem_str,
+                    "history": self.victron.get_history(self.graph_item),
                 }
                 
                 # Check if screen needs to switch

@@ -336,7 +336,7 @@ sudo journalctl -u victron-monitor.service -n 50
 
 ## ⚙️ Advanced Configuration
 ### Screen 6: Power Graph
-Line graph of the last 5 minutes (time on X, newest at right). The title (item and units) is at the top in a very small font; a tiny numeric-only min/max scale for the Y axis sits at the right edge. Values are signed (negative = discharging); when the window crosses zero, a dashed zero line is drawn. Samples are collected about once per second and held in memory only (lost on restart).
+Line graph of the last 5 minutes (time on X, newest at right). The title (item and units) is at the top in a very small font (it scrolls as a marquee if wider than the display); a tiny numeric-only min/max scale for the Y axis sits at the right edge. Values are signed (negative = discharging); when the window crosses zero, a dashed zero line is drawn. Samples are collected about once per second and held in memory only (lost on restart).
 
 Choose the plotted item with `OLED.power_graph_item` in `app_config.json`: `watts` (default), `voltage`, `current`, or `soc`.
 ```json

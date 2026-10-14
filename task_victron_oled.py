@@ -641,11 +641,28 @@ class VictronOLEDTask:
         
         self.oled.show()
     
+    def draw_graph_title(self, title, font_size=8, width=128, gap=24, speed=20.0):
+        """Draw the graph title, scrolling it as a marquee only if it does not fit."""
+        try:
+            from PIL import ImageFont
+            font = ImageFont.truetype(self.oled.default_font_path, font_size)
+            text_width = int(font.getlength(title))
+        except Exception:
+            text_width = len(title) * 5
+        if text_width <= width:
+            self.oled.draw_text(title, position=((0, 0), (width, 8)), directory="center", offset=(0, -1), font_size=font_size)
+            return
+        cycle = text_width + gap
+        shift = int(time.time() * speed) % cycle
+        for x in (-shift, cycle - shift):
+            if x < width:
+                self.oled.draw_text(title, position=((0, 0), (width, 8)), directory="left", offset=(x, -1), font_size=font_size)
+
     def oled_ui_power_graph(self, item, history):
         """Display a line graph of the selected item over the 5 minute window."""
         self.oled.clear()
         title = "5-Minute Data " + self.GRAPH_ITEMS.get(item, item)
-        self.oled.draw_text(title, position=((0, 0), (128, 8)), directory="center", offset=(0, -1), font_size=8)
+        self.draw_graph_title(title)
         top, bottom = 9, 63
         values = [v for _, v in history]
         if len(values) < 2:

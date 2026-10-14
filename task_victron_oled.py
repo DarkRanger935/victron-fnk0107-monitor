@@ -518,7 +518,9 @@ class VictronOLEDTask:
         for screen_name, default_duration in defaults.items():
             if configured.get(screen_name) is not None:
                 durations[screen_name] = configured[screen_name]
-            elif screen_name in ("victron", "power_graph"):
+            elif screen_name == "power_graph":
+                durations[screen_name] = default_duration
+            elif screen_name == "victron":
                 durations[screen_name] = screen2_config.get("display_time", default_duration)
             else:
                 durations[screen_name] = (

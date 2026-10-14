@@ -662,6 +662,10 @@ class VictronOLEDTask:
         self.oled.draw_text(min_text, position=((0, bottom - 8), (128, bottom)), directory="right", font_size=7)
         self.oled.draw_line(((left, top), (left, bottom)), fill="white")
         self.oled.draw_line(((left, bottom), (right, bottom)), fill="white")
+        if min(values) < 0 < max(values):
+            zero_y = bottom - int((0 - lo) / (hi - lo) * (bottom - top))
+            for x in range(left + 1, right + 1, 4):
+                self.oled.draw_line(((x, zero_y), (min(x + 1, right), zero_y)), fill="white")
         now = history[-1][0]
         window = float(getattr(self.victron, "HISTORY_WINDOW_SECONDS", 300))
         points = []

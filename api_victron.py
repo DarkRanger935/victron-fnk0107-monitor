@@ -245,7 +245,7 @@ class VictronMonitor:
                 return False
             current = self.data['current']
             self.history.append((now, {
-                'watts': abs(voltage * current),
+                'watts': voltage * current,
                 'voltage': voltage,
                 'current': current,
                 'soc': self.data['soc'],

@@ -49,8 +49,10 @@
       "utilization": 15.0,
       "fans": 7.0,
       "temperatures": 7.0,
-      "victron": 30.0
-    }
+      "victron": 30.0,
+      "power_graph": 30.0
+    },
+    "power_graph_item": "watts"
   },
   "Victron": {
     "port": "/dev/serial/by-id/usb-VictronEnergy_BV_VE_Direct_cable_VEAWDPFF-if00-port0",

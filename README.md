@@ -19,6 +19,7 @@ Note that if the load on the power system is reduced (which will raise the syste
 - **Fan Screen**: CPU and case-fan PWM pie charts
 - **Temperature Screen**: CPU and case temperatures
 - **Victron Screen**: Power header, voltage, current, SOC, and time remaining
+- **Power Graph Screen**: Line graph of the selected data item over a 5 minute moving window (kept in memory)
 
 ### Intelligent Alerts
 - **Low Voltage Alert** (≤12.8V default)
@@ -116,8 +117,10 @@ Edit `app_config.json`:
       "utilization": 15.0,
       "fans": 7.0,
       "temperatures": 7.0,
-      "victron": 30.0
-    }
+      "victron": 30.0,
+      "power_graph": 30.0
+    },
+    "power_graph_item": "watts"
   }
 }
 ```
@@ -332,6 +335,13 @@ sudo journalctl -u victron-monitor.service -n 50
 - Check for stuck threads in logs
 
 ## ⚙️ Advanced Configuration
+### Screen 6: Power Graph
+Line graph of the last 5 minutes (time on X, newest at right). The title (item and units) is at the top in a very small font (it scrolls as a marquee if wider than the display); a tiny numeric-only min/max scale for the Y axis sits at the right edge. Values are signed (negative = discharging); when the window crosses zero, a dashed zero line is drawn. Samples are collected about once per second and held in memory only (lost on restart).
+
+Choose the plotted item with `OLED.power_graph_item` in `app_config.json`: `watts` (default), `voltage`, `current`, or `soc`.
+```json
+{ "OLED": { "power_graph_item": "watts" } }
+```
 
 ### Voltage Thresholds
 Edit `app_config.json`:
@@ -345,7 +355,7 @@ Edit `app_config.json`:
 ```
 
 ### Display Timing
-`screen_durations` sets the rotation duration in seconds for each named screen. Defaults are 7 seconds for date/time, fan, and temperature screens; 15 seconds for utilization (CPU/memory/disk); and 30 seconds for Victron power. Older configurations using `system_screen_display_time`, `screen1.display_time`, or `screen2.display_time` remain supported as fallbacks.
+`screen_durations` sets the rotation duration in seconds for each named screen. Defaults are 7 seconds for date/time, fan, and temperature screens; 15 seconds for utilization (CPU/memory/disk); 30 seconds for Victron power, and 30 seconds for the power graph. Older configurations using `system_screen_display_time`, `screen1.display_time`, or `screen2.display_time` remain supported as fallbacks.
 
 ```json
 {
@@ -355,8 +365,10 @@ Edit `app_config.json`:
       "utilization": 15.0,
       "fans": 7.0,
       "temperatures": 7.0,
-      "victron": 30.0
-    }
+      "victron": 30.0,
+      "power_graph": 30.0
+    },
+    "power_graph_item": "watts"
   }
 }
 ```

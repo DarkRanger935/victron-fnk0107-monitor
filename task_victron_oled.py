@@ -505,6 +505,7 @@ class VictronOLEDTask:
             "fans": 7.0,
             "temperatures": 7.0,
             "victron": 30.0,
+            "power_graph": 30.0,
         }
         configured = oled_config.get("screen_durations") or {}
         legacy_system_duration = oled_config.get("system_screen_display_time")
@@ -517,7 +518,7 @@ class VictronOLEDTask:
         for screen_name, default_duration in defaults.items():
             if configured.get(screen_name) is not None:
                 durations[screen_name] = configured[screen_name]
-            elif screen_name == "victron":
+            elif screen_name in ("victron", "power_graph"):
                 durations[screen_name] = screen2_config.get("display_time", default_duration)
             else:
                 durations[screen_name] = (
